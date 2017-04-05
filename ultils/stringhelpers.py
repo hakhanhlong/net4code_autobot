@@ -46,3 +46,45 @@ def warn(msg, end='\n'):
 
 def err(msg, end='\n'):
     print(FAIL + msg + ENDC, end=end)
+
+
+'''move text to each row'''
+def text_to_arrayrow(text):
+    return text.splitlines()
+
+'''get list string between'''
+def list_string_between(source, start = None, end = None):
+    start_sep = start
+    end_sep = end
+    result = []
+    tmp = source.split(start_sep)
+    for par in tmp:
+        if end_sep in par:
+            result.append(par.split(end_sep)[0])
+    return result
+
+'''get string between'''
+def string_between(source, start, end):
+    try:
+        result = source[source.find(start) + len(start):source.rfind(end)]
+        return result
+    except ValueError:
+        return None
+
+'''find string between'''
+def find_between( s, first, last ):
+    try:
+        start = s.index( first ) + len( first )
+        end = s.index( last, start )
+        return s[start:end]
+    except ValueError:
+        return ""
+
+'''find string between right'''
+def find_between_r( s, first, last ):
+    try:
+        start = s.rindex( first ) + len( first )
+        end = s.rindex( last, start )
+        return s[start:end]
+    except ValueError:
+        return ""
