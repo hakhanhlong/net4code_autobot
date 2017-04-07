@@ -67,11 +67,11 @@ class IOSXRHandler(BaseHandler):
                     if index == 0:
                         if blanks > 0: self.blank_lines(blanks)
             elif index == 4: #xu ly more
-                self.session.sendline('')
+                self.session.sendline(' ')
                 while 1:
                     index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout = 1)
                     if index == 1:
-                        self.session.sendline('')
+                        self.session.sendline(' ')
                         self.output_result.append(self.session.after)
                     else:
                         self.output_result.append(self.session.before)
