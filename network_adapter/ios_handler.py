@@ -49,11 +49,12 @@ class IOSHandler(BaseHandler):
             if index == 0:
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 1:
+                self.output_result.append(self.session.before)
                 pass
             elif index == 2:
                 self.session.sendline('')
                 self.session.expect_list(prompt, timeout=timeout)
-                self.output_result.append(self.session.after)
+                self.output_result.append(self.session.before)
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 3:
                 if error_reporting is True:

@@ -14,15 +14,16 @@ def main():
 
     #27.78.16.56:32771
     parameters = {
-        'device_type': 'junos', #or junos, ios, ios-xr
+        'device_type': 'ios-xr', #or junos, ios, ios-xr 5395
         'host': '27.78.16.56',
         #'host':'27.78.16.56',
         'protocol': 'telnet',
         'username': 'longdn',
-        'password': '123456a@',
+        #'password': '123456a@',
+        'password': '123456',
         #'port': 32771, #ios
-        #'port': 32769, #xr
-         'port': 32776, #junos
+        'port': 32769, #xr
+        #'port': 32776, #junos
 
     }
 
@@ -38,8 +39,9 @@ def main():
     ]'''
 
     commands = [
-        #'show process cpu'
-        'show configuration'
+        #'config terminal'
+        'show process cpu'
+        #'show configuration'
         #'set system host-name longhk123',
         #'commit'
     ]

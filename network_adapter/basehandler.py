@@ -6,7 +6,7 @@ import re
 class BaseHandler:
     def __init__(self, host='', protocol='telnet', username='', password='', port=None):
         self.host = host
-        self.protocol = protocol
+        self.protocol = protocol.lower()
         self.username = username
         self.password = password
         self.port = port
@@ -119,6 +119,7 @@ class BaseHandler:
         result = result.replace("[K", "")
         result = result.replace("[K --More", "")
         result = result.replace("--           [K", "")
+        result = result.replace("           ", "")
         return result
 
 
