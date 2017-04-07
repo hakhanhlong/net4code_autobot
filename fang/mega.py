@@ -9,11 +9,12 @@ from network_adapter.factory_connector import FactoryConnector
 
 class Mega(threading.Thread):
     """ Thread instance each process mega """
-    def __init__(self, name, data_command = None):
+    def __init__(self, name, data_command = None, dict_command = {}):
         threading.Thread.__init__(self)
         self.name = name
         self.data_command = data_command
         self.requestURL = RequestURL()
+        self.dict_command = dict_command
 
 
     def run(self):
@@ -79,6 +80,8 @@ class Mega(threading.Thread):
                         _request.url = self.requestURL.MEGA_URL_COMMAND_UPDATE % (self.data_command['command_id'])
                         _request.params = {'mega_status':'tested'}
                         _request.put()
+                        key_command = 'command_%d' % (self.data_command['command_id'])
+                        del self.dict_command[key_command]
                         #--------------------------------------------------------------------------------------------
                     except ConnectionError as _conErr:
                         stringhelpers.info("MEGA THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
@@ -98,6 +101,8 @@ class Mega(threading.Thread):
                         _request.url = self.requestURL.MEGA_URL_COMMAND_UPDATE % (self.data_command['command_id'])
                         _request.params = {'mega_status': 'tested'}
                         _request.put()
+                        key_command = 'command_%d' % (self.data_command['command_id'])
+                        del self.dict_command[key_command]
                         # --------------------------------------------------------------------------------------------
                     except ConnectionError as _conErr:
                         stringhelpers.info("MEGA THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
@@ -121,6 +126,7 @@ class MegaManager(threading.Thread):
 
     def run(self):
         _request = RequestHelpers(self.requestURL.MEGA_URL_LIST_COMMAND_UNTESTED)
+        dict_command = dict()
         while not self.is_stop:
             try:
                 self.counter = self.counter + 1
@@ -129,8 +135,14 @@ class MegaManager(threading.Thread):
                 _list_commands = _request.get().json()
                 if len(_list_commands) > 0:
                     for x in _list_commands:
-                        mega = Mega("Thread-%d" % (x['command_id']), x)
-                        mega.start()
+                        key_command = 'command_%d' % (x['command_id'])
+                        if dict_command.get(key_command, None) is not None:
+                            pass
+                        else:
+                            dict_command[key_command] = key_command
+                            mega = Mega("Thread-%d" % (x['command_id']), x, dict_command)
+                            mega.start()
+
 
             except Exception as e:
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))

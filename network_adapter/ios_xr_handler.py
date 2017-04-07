@@ -37,7 +37,8 @@ class IOSXRHandler(BaseHandler):
             r"\((?:config|cfg)[^\)]*\) ?# *$",
             r"(?i)^clear.*\[confirm\] *$",
             r"(?i)^% *(?:ambiguous|incomplete|invalid|unknown|\S+ overlaps).*$",
-            r".*--More"
+            r".*--More",
+            r".*#"
         ])
         self.blank_lines(2)
         for command in command_list:
