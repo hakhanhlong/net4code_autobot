@@ -45,6 +45,7 @@ class IOSXRHandler(BaseHandler):
             self.session.sendline(command)
             self.session.readline()
             index = self.session.expect_list(prompt, timeout=timeout)
+            self.output_result.append(self.session.before)
             self.output_result.append(self.session.after)
             if index == 0:
                 if blanks > 0: self.blank_lines(blanks)

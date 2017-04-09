@@ -42,8 +42,6 @@ class Mega(threading.Thread):
                     'port': port
                 }
 
-
-
                 '''process command contains params'''
                 command = None
                 test_args = self.data_command['test_args']
@@ -68,8 +66,14 @@ class Mega(threading.Thread):
                         'command_id': self.data_command['command_id'],
                         'device_id': self.data_command["test_device"],
                         'console_log': result_fang,
-                        'result': {}
+                        'result': dict()
                     }
+
+                    # processing parsing command follow output ###########################################
+                    command_type = self.data_command['type']
+                    cmd_log = self.parsing(command_type, cmd_log)
+                    ######################################################################################
+
                     try:
                         _request.url = self.requestURL.MEGA_URL_COMMANDLOG_UPDATE % (command_log[0]['log_id'])
                         _request.params = cmd_log
@@ -90,8 +94,14 @@ class Mega(threading.Thread):
                         'command_id': self.data_command['command_id'],
                         'device_id': self.data_command["test_device"],
                         'console_log': result_fang,
-                        'result': {}
+                        'result': dict()
                     }
+
+                    # processing parsing command follow output ###########################################
+                    command_type = self.data_command['type']
+                    cmd_log = self.parsing(command_type, cmd_log)
+                    ######################################################################################
+
                     try:
                         _request.url = self.requestURL.MEGA_URL_COMMANDLOG_CREATE
                         _request.params = cmd_log
@@ -112,6 +122,113 @@ class Mega(threading.Thread):
             stringhelpers.err("MEGA THREAD ERROR %s | THREAD %s" % (e, self.name))
         except ConnectionError as errConn:
             stringhelpers.err("MEGA CONNECT API URL ERROR %s | THREAD %s" % (_request.url, self.name))
+
+
+
+
+
+    def parsing(self, command_type = 0, cmd_log = {}):
+        final_result_output = []
+        try:
+            if command_type == 3: # alway using for ironman
+                output_result = []
+                for output_item in self.data_command['output']:
+                    start_by = output_item['start_by']
+                    end_by = output_item['end_by']
+                    if start_by == '' and end_by == '':
+                        output_result.append({'value': cmd_log['console_log'], 'compare': True})
+                        cmd_log['result']['outputs'] = output_result
+                        cmd_log['result']['final_output'] = True
+                    else:
+                        if end_by == 'end_row':
+                            end_by = '\r\n'
+                        _ret_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by)
+                        output_result.append({'value': _ret_value, 'compare': True})
+                        cmd_log['result']['outputs'] = output_result
+                        cmd_log['result']['final_output'] = True
+                return cmd_log
+            elif command_type == 2 or command_type == 1:
+                output_result = []
+                for output_item in self.data_command['output']:
+                    if output_item['start_by'] is not '' and output_item['end_by'] is not '':
+                        try:
+                            start_by = output_item['start_by']
+                            end_by = output_item['end_by']
+                            standard_value = int(output_item['standard_value'])
+                            compare = output_item['compare']
+                            if end_by == 'end_row':
+                                end_by = '\r\n'
+                            compare_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by)
+                            if compare_value is not None or compare_value is not '':
+                                compare_value = int(compare_value)
+                                retvalue_compare = self.func_compare(compare, standard_value, compare_value)
+                                output_result.append({'value': compare_value, 'compare': retvalue_compare})
+                                # save final result of each output
+                                final_result_output.append(retvalue_compare)
+                        except Exception as _error:
+                            _strError = "MEGA PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _error, self.name)
+                            stringhelpers.err(_strError)
+                            output_result.append({'value': compare_value, 'compare': retvalue_compare, 'error': _strError})
+
+
+                # determine operator for final output
+                count_operator = 0
+                final_operator = []
+                for x in self.data_command['final_output']:
+                    if x == '&' or x == '|':
+                        final_operator.append(x)
+
+                # compare final output
+                number_operator = 0
+                first_value = None
+                for x in final_result_output:
+                    if number_operator == 0:
+                        first_value = x
+                    else:
+                        first_value = self.func_compare(final_operator[number_operator-1], first_value, x)
+                    number_operator = number_operator + 1
+
+                    if number_operator == len(final_result_output):
+                        cmd_log['result']['final_output'] = first_value
+                cmd_log['result']['outputs'] = output_result
+                return cmd_log
+        except Exception as _errorException:
+            pass
+
+
+
+    def func_compare(self, argument, standard_value, compare_value):
+
+        compare_operator = {
+            '<=': self.compare_lessorequal,
+            '>=': self.compare_largerorequal,
+            '=' : self.compare_equal,
+            '>': self.compare_larger,
+            '<': self.compare_lessthan,
+            '<>': self.compare_notequal,
+            '&': self.compare_final_equal,
+            '|': self.compare_final_or
+        }
+        func = compare_operator.get(argument)
+        return func(standard_value, compare_value)
+
+    def compare_lessorequal(self, standard_value = 0, compare_value = 0):
+        return compare_value <= standard_value
+    def compare_largerorequal(self, standard_value = 0, compare_value = 0):
+        return compare_value >= standard_value
+    def compare_equal(self, standard_value = 0, compare_value = 0):
+        return compare_value == standard_value
+    def compare_larger(self, standard_value = 0, compare_value = 0):
+        return compare_value > standard_value
+    def compare_lessthan(self, standard_value = 0, compare_value = 0):
+        return compare_value < standard_value
+    def compare_notequal(self, standard_value = 0, compare_value = 0):
+        return compare_value != standard_value
+    def compare_final_equal(self, output_value = 0, output_value_ = 0):
+        return output_value == output_value_
+    def compare_final_or(self, output_value = 0, output_value_ = 0):
+        return output_value == output_value_
+
 
 
 class MegaManager(threading.Thread):
@@ -148,7 +265,7 @@ class MegaManager(threading.Thread):
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))
             except ConnectionError as errConn:
                 stringhelpers.err("MEGA CONNECT API ERROR %s" % (errConn))
-            time.sleep(10)
+            time.sleep(1000)
 
     def stop(self):
         self.is_stop = True
