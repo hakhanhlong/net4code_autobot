@@ -265,7 +265,7 @@ class MegaManager(threading.Thread):
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))
             except ConnectionError as errConn:
                 stringhelpers.err("MEGA CONNECT API ERROR %s" % (errConn))
-            time.sleep(1000)
+            time.sleep(10)
 
     def stop(self):
         self.is_stop = True
