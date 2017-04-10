@@ -196,6 +196,8 @@ class Mega(threading.Thread):
                 return cmd_log
         except Exception as _errorException:
             cmd_log['parsing_status'] = 'ERROR'
+            _strError = "MEGA PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _errorException, self.name)
+            stringhelpers.err(_strError)
             return  cmd_log
 
 
