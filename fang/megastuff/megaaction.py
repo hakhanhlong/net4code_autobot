@@ -4,25 +4,27 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 
-class MegaCommand(threading.Thread):
+class MegaAction(threading.Thread):
     """ Thread instance each process mega """
-    def __init__(self, name, data_command = None, dict_command = {}):
+    def __init__(self, name, data_action = None, dict_action = {}):
         threading.Thread.__init__(self)
         self.name = name
-        self.data_command = data_command
+        self.data_action = data_action
         self.requestURL = RequestURL()
-        self.dict_command = dict_command
+        self.dict_action = dict_action
+        self._request = RequestHelpers()
+        self.data_command = None
 
 
     def run(self):
-        _request = RequestHelpers()
-        _request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (self.data_command["test_device"])
+
+        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (self.data_action["test_device"])
 
         try:
-            device = _request.get().json()
+            device = self._request.get().json()
             try:
                 if device['status_code'] == 500: #device not exist
-                    stringhelpers.err("DEVICE ID %s NOT EXIST | THREAD %s" % (self.data_command["test_device"], self.name))
+                    stringhelpers.err("DEVICE ID %s NOT EXIST | THREAD %s" % (self.data_action["test_device"], self.name))
             except: #process fang test device by command
                 host = device['ip_mgmt']
                 port = int(device['port_mgmt'])
@@ -33,95 +35,82 @@ class MegaCommand(threading.Thread):
                 parameters = {
                     'device_type': device_type,
                     'host': host,
-                    'protocol': method,
+                    'protocol': method.lower(),
                     'username': username,
                     'password': password,
                     'port': port
                 }
 
-                '''process command contains params'''
-                command = None
-                test_args = self.data_command['test_args']
-                if len(test_args) > 0:
-                    command = self.data_command['command']
-                    for x in self.data_command['test_args']:
-                        command = command.replace('@{%s}' % (x['name']), x['value'])
+                key_list_command = "%s|%s" % (device['vendor'],device['os'])
+                _list_action_commands = self.data_action['commands'][key_list_command]
+                _dict_list_command = dict()
+                _dict_list_params = self.data_action['test_args']
+                _array_step = []
+                if len(_list_action_commands) > 0:
+                    count = 0
+                    for _command in _list_action_commands:
+                        count = count + 1
+                        _dict_list_command[str(count)] = _command
+                        _array_step.append(str(count))  # save step command
+
                 else:
-                    command = self.data_command['command']
-                '''####################################'''
+                    pass
 
-                commands = [command]
-                fac = FactoryConnector(**parameters)
-                print("FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (host, device['port_mgmt'], device_type))
-                fang = fac.execute(commands)
-                result_fang = fang.get_output()
+                '''#############################process command by dependency########################################'''
+                if len(_array_step) > 0:
+                    for step in _array_step:
+                        _command_running = _dict_list_command[step]
+                        #if _command_running['dependency'] == '0':
+                        command_id = _command_running.get('command_id', 0)
+                        if command_id > 0:
+                            if int(_command_running['dependency']) > 0: # run need compare
+                                output_info = self.process_each_command(command_id, parameters, _dict_list_params)
+                                pass
+                            else: # run not need compare
+                                output_info = self.process_each_command(command_id, parameters, _dict_list_params)
+                                pass
 
-                _request.url = self.requestURL.MEGA_URL_COMMANDLOG_GETBY_COMMANDID % (self.data_command['command_id'])
-                command_log = _request.get().json()
-                if len(command_log) > 0:
-                    cmd_log = {
-                        'command_id': self.data_command['command_id'],
-                        'device_id': self.data_command["test_device"],
-                        'console_log': result_fang,
-                        'result': dict()
-                    }
+                        else: #last command in actions check point
+                            pass
 
-                    # processing parsing command follow output ###########################################
-                    command_type = self.data_command['type']
-                    cmd_log = self.parsing(command_type, cmd_log)
-                    ######################################################################################
-
-                    try:
-                        _request.url = self.requestURL.MEGA_URL_COMMANDLOG_UPDATE % (command_log[0]['log_id'])
-                        _request.params = cmd_log
-                        _request.put()
-                        stringhelpers.info("MEGA THREAD INFO: %s | THREAD %s" % ("UPDATE COMMAND LOG SUCCESS", self.name))
-
-                        #---------------update mega_status to command------------------------------------------------
-                        _request.url = self.requestURL.MEGA_URL_COMMAND_UPDATE % (self.data_command['command_id'])
-                        _request.params = {'mega_status':'tested'}
-                        _request.put()
-                        key_command = 'command_%d' % (self.data_command['command_id'])
-                        del self.dict_command[key_command]
-                        #--------------------------------------------------------------------------------------------
-                    except ConnectionError as _conErr:
-                        stringhelpers.info("MEGA THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-                else:
-                    cmd_log = {
-                        'command_id': self.data_command['command_id'],
-                        'device_id': self.data_command["test_device"],
-                        'console_log': result_fang,
-                        'result': dict()
-                    }
-
-                    # processing parsing command follow output ###########################################
-                    command_type = self.data_command['type']
-                    cmd_log = self.parsing(command_type, cmd_log)
-                    ######################################################################################
-
-                    try:
-                        _request.url = self.requestURL.MEGA_URL_COMMANDLOG_CREATE
-                        _request.params = cmd_log
-                        _request.post()
-                        stringhelpers.info("MEGA THREAD INFO: %s | THREAD %s" % ("INSERT COMMAND LOG SUCCESS", self.name))
-                        # ---------------update mega_status to command------------------------------------------------
-                        _request.url = self.requestURL.MEGA_URL_COMMAND_UPDATE % (self.data_command['command_id'])
-                        _request.params = {'mega_status': 'tested'}
-                        _request.put()
-                        key_command = 'command_%d' % (self.data_command['command_id'])
-                        del self.dict_command[key_command]
-                        # --------------------------------------------------------------------------------------------
-                    except ConnectionError as _conErr:
-                        stringhelpers.info("MEGA THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-
+                '''##################################################################################################'''
 
         except Exception as e:
-            stringhelpers.err("MEGA THREAD ERROR %s | THREAD %s" % (e, self.name))
+            stringhelpers.err("MEGA ACTIONS THREAD ERROR %s | THREAD %s" % (e, self.name))
         except ConnectionError as errConn:
-            stringhelpers.err("MEGA CONNECT API URL ERROR %s | THREAD %s" % (_request.url, self.name))
+            stringhelpers.err("MEGA ACTIONS CONNECT API URL ERROR %s | THREAD %s" % (self._request.url, self.name))
 
 
+    def process_each_command(self, command_id = 0, device_parameters = {}, _dict_list_params = {}):
+        '''process command contains params'''
+        try:
+            self._request.url = self.requestURL.MEGA_URL_COMMAND_DETAIL % (command_id)
+            self.data_command = self._request.get().json()
+            command = None
+            test_args = _dict_list_params.get(str(command_id), None)
 
+            if test_args is not None:
+                command = self.data_command['command']
+                for x in test_args:
+                    command = command.replace('@{%s}' % (x['name']), x['value'])
+            else:
+                command = self.data_command['command']
+            '''####################################'''
+            commands = [command]
+            stringhelpers.info_green(command)
+            # fac = FactoryConnector(**device_parameters)
+            # print("FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (host, device['port_mgmt'], device_type))
+            # fang = fac.execute(commands)
+            # result_fang = fang.get_output()
+            result_fang = ''
+            # processing parsing command follow output ###########################################
+            command_type = self.data_command['type']
+            #cmd_log = self.parsing(command_type, result_fang)
+            ######################################################################################
+        except Exception as e:
+            stringhelpers.err("MEGA ACTION PROCESS EACH COMMAND ERROR %s | THREAD %s" % (e, self.name))
+        except ConnectionError as errConn:
+            stringhelpers.err("MEGA ACTION CONNECT API URL ERROR %s | THREAD %s" % (errConn, self.name))
 
 
     def parsing(self, command_type = 0, cmd_log = {}):
@@ -196,6 +185,3 @@ class MegaCommand(threading.Thread):
             _strError = "MEGA PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _errorException, self.name)
             stringhelpers.err(_strError)
             return  cmd_log
-
-
-
