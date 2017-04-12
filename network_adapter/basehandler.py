@@ -4,13 +4,13 @@ import re
 
 
 class BaseHandler:
-    def __init__(self, host='', protocol='telnet', username='', password='', port=None):
+    def __init__(self, host='', protocol='telnet', username='', password='', port=None, timeout=30):
         self.host = host
         self.protocol = protocol.lower()
         self.username = username
         self.password = password
         self.port = port
-
+        self.timeout = timeout
         self.output_result = []
 
 
@@ -28,7 +28,7 @@ class BaseHandler:
 
 
 
-        self.session = pexpect.spawnu(cmd, timeout=30, maxread=1024 * 100000, searchwindowsize=1024 * 4, encoding='utf8')
+        self.session = pexpect.spawnu(cmd, timeout=self.timeout, maxread=1024 * 100000, searchwindowsize=1024 * 4, encoding='utf8')
 
     def auth_failed(self, message):
         self.session.terminate()

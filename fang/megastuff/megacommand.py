@@ -151,7 +151,7 @@ class MegaCommand(threading.Thread):
                         try:
                             start_by = output_item['start_by']
                             end_by = output_item['end_by']
-                            standard_value = int(output_item['standard_value'])
+                            standard_value = output_item['standard_value']
                             compare = output_item['compare']
                             if end_by == 'end_row':
                                 end_by = '\r\n'
@@ -159,6 +159,7 @@ class MegaCommand(threading.Thread):
                             if compare_value is not None or compare_value is not '':
                                 if compare != "contains":
                                     compare_value = int(compare_value)
+                                    standard_value = int(standard_value)
                                 retvalue_compare = self.func_compare(compare, standard_value, compare_value.strip())
                                 output_result.append({'value': compare_value, 'compare': retvalue_compare})
                                 # save final result of each output

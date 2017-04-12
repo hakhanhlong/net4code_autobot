@@ -8,8 +8,8 @@ class JunosHandler(BaseHandler):
 
     ''' junos handler to juniper network devices'''
 
-    def __init__(self, host='', protocol='telnet', username='', password='', port=None):
-        super().__init__(host, protocol, username, password, port)
+    def __init__(self, host='', protocol='telnet', username='', password='', port=None, timeout=30):
+        super().__init__(host, protocol, username, password, port, timeout)
 
     def execute_command(self, command_list, blanks=0, error_reporting=False, timeout=30):
         prompt = self.re_compile([
@@ -31,19 +31,19 @@ class JunosHandler(BaseHandler):
             self.session.sendline('')
             if error_reporting is True:
                 while 1:
-                    index = self.session.expect_list(prompt, timeout= 1)
+                    index = self.session.expect_list(prompt, timeout=1)
                     if index == 4:
                         self.output_result.append(self.session.after)
-                        self.session.sendline('') #send space get more information
+                        self.session.sendline('')  # send space get more information
                     else:
                         self.output_result.append(self.session.before)
                         break
             else:
                 while 1:
-                    index = self.session.expect_list([prompt[0], prompt[1], prompt[4]], timeout= 1)
+                    index = self.session.expect_list([prompt[0], prompt[1], prompt[4]], timeout=1)
                     if index == 2:
                         self.output_result.append(self.session.after)
-                        self.session.sendline('') #send space get more information
+                        self.session.sendline('')  # send space get more information
                     else:
                         self.output_result.append(self.session.before)
                         break

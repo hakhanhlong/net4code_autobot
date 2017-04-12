@@ -8,11 +8,11 @@ from network_adapter.basehandler import BaseHandler
 class IOSHandler(BaseHandler):
     ''' ios handler to cisco network devices'''
 
-    def __init__(self, host='', protocol='telnet', username='', password='', port=None):
-        super().__init__(host, protocol, username, password, port)
+    def __init__(self, host='', protocol='telnet', username='', password='', port=None, timeout=30):
+        super().__init__(host, protocol, username, password, port, timeout)
 
 
-    def ios_enable(self, enable_password='', timeout=10):
+    '''def ios_enable(self, enable_password=''):
         if enable_password == '': return
         prompt = self.re_compile([
             r"> *$",
@@ -29,7 +29,7 @@ class IOSHandler(BaseHandler):
                 self.session.sendline(enable_password)
                 index = self.session.expect_list(prompt, timeout=timeout)
                 if index == 1:
-                    self.auth_failed('enable failed.')
+                    self.auth_failed('enable failed.')'''
 
     def execute_command(self, command_list, blanks=0, error_reporting=False, timeout=30):
         prompt = self.re_compile([
@@ -67,10 +67,10 @@ class IOSHandler(BaseHandler):
                     self.output_result.append(self.session.after)
                     if index == 0:
                         if blanks > 0: self.blank_lines(blanks)
-            elif index == 4: #xu ly more
+            elif index == 4:  # xu ly more
                 while 1:
                     self.session.sendcontrol('m')
-                    index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout = 1)
+                    index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout=1)
                     if index != 1:
                         self.output_result.append(self.session.before)
                         break
