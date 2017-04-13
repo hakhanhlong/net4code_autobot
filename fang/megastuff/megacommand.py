@@ -159,7 +159,7 @@ class MegaCommand(threading.Thread):
                             if compare_value is not None or compare_value is not '':
                                 if compare != "contains":
                                     compare_value = int(compare_value)
-                                    standard_value = int(standard_value)
+                                    standard_value = int()
                                 retvalue_compare = self.func_compare(compare, standard_value, compare_value.strip())
                                 output_result.append({'value': compare_value, 'compare': retvalue_compare})
                                 # save final result of each output

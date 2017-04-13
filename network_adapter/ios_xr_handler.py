@@ -71,6 +71,7 @@ class IOSXRHandler(BaseHandler):
             elif index == 4:  # xu ly more
                 self.session.sendline(' ')
                 while 1:
+                    time.sleep(0.2)
                     index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout=1)
                     if index == 1:
                         self.session.sendline(' ')
@@ -94,7 +95,7 @@ class IOSXRHandler(BaseHandler):
             r".*--More",
             r".*#"
         ])
-        self.blank_lines(2)
+        #self.blank_lines(2)
         for command in command_list:
             self.session.sendline(command)
             time.sleep(0.3)

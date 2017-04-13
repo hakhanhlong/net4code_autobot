@@ -14,5 +14,11 @@ class RequestURL:
         self.MEGA_URL_COMMANDLOG_UPDATE = os.environ.get('MEGA_URL_COMMANDLOG_UPDATE')
 
         self.MEGA_URL_LIST_ACTION_UNTESTED = os.environ.get('MEGA_URL_LIST_ACTION_UNTESTED')
+        self.MEGA_URL_ACTION_UPDATE = os.environ.get('MEGA_URL_ACTION_UPDATE')
+        self.MEGA_URL_ACTION_DETAIL = os.environ.get('MEGA_URL_ACTION_DETAIL')
+        self.MEGA_URL_ACTIONLOG_GETBY_ACTIONID = os.environ.get('MEGA_URL_ACTIONLOG_GETBY_ACTIONID')
+        self.MEGA_URL_ACTIONLOG_CREATE = os.environ.get('MEGA_URL_ACTIONLOG_CREATE')
+        self.MEGA_URL_ACTIONLOG_UPDATE = os.environ.get('MEGA_URL_ACTIONLOG_UPDATE')
+
 
 
