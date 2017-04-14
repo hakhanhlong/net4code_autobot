@@ -71,18 +71,27 @@ class MegaAction(threading.Thread):
                     self.fang = fac.execute_keep_alive(loginfo=self.log_output_file_name)
 
                     compare_final_output = []
-
+                    previous_final_output = None
                     for step in _array_step:
                         _command_running = _dict_list_command[step]
                         #if _command_running['dependency'] == '0':
                         command_id = _command_running.get('command_id', 0)
                         if command_id > 0: #command_id > 0
                             if int(_command_running['dependency']) > 0: # run need compare
-                                output_info = self.process_each_command(command_id, _dict_list_params)
-                                self.action_log['result']['outputs'][key_list_command].append(output_info)
-                                stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                currentStep = int(step)
+                                previousStep = currentStep - 1
+                                #previous_final_output = self.action_log['result']['outputs'][key_list_command][previousStep-1][str(command_id)]['final_output']
+                                if(int(_command_running['condition']) == int(previous_final_output)):
+                                    output_info = self.process_each_command(command_id, _dict_list_params)
+                                    previous_final_output = output_info[str(command_id)]['final_output']
+                                    self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                    stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                else:
+                                    stringhelpers.err("MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT PREVIOUS STEP %d| THREAD %s" % (step, previousStep, self.name))
+                                    break
                             else: # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params)
+                                previous_final_output = output_info[str(command_id)]['final_output']
                                 self.action_log['result']['outputs'][key_list_command].append(output_info)
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 if int(step) > 1:
