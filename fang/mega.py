@@ -38,6 +38,7 @@ class MegaManager(threading.Thread):
                             dict_command[key_command] = key_command
                             mega_command = MegaCommand("Thread-Command-%d" % (x['command_id']), x, dict_command)
                             mega_command.start()
+                time.sleep(5)
                 #-------------------------------------------------------------------------------------------------------
 
                 #-------------- MEGA RUN ACTION TEST -------------------------------------------------------------------
@@ -52,7 +53,7 @@ class MegaManager(threading.Thread):
                             dict_action[key_action] = key_action
                             mega_action = MegaAction("Thread-Action-%d" % (x['action_id']), x, dict_action)
                             mega_action.start()
-                time.sleep(2)
+                time.sleep(5)
                 #-------------------------------------------------------------------------------------------------------
 
 
