@@ -80,11 +80,11 @@ class MegaAction(threading.Thread):
                             if int(_command_running['dependency']) > 0: # run need compare
                                 output_info = self.process_each_command(command_id, _dict_list_params)
                                 self.action_log['result']['outputs'][key_list_command].append(output_info)
-                                stringhelpers.info("step %s: %s" % (step, str(output_info)))
+                                stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                             else: # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params)
                                 self.action_log['result']['outputs'][key_list_command].append(output_info)
-                                stringhelpers.info("step %s: %s" % (step, str(output_info)))
+                                stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 if int(step) > 1:
                                     if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                         compare_final_output.append(True)
@@ -110,13 +110,13 @@ class MegaAction(threading.Thread):
                             self.action_log['final_output'] = first_value
 
                     except Exception as ex:
-                        stringhelpers.info("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
+                        stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
 
 
                     #---------------------------------------------------------------------------------------------------
 
                     self.fang.remove_file_log(self.log_output_file_name)
-                    stringhelpers.warn(str(self.action_log))
+                    #stringhelpers.warn(str(self.action_log))
                     self.fang.terminal() # finished fang command
                 '''##################################################################################################'''
 
@@ -159,7 +159,7 @@ class MegaAction(threading.Thread):
                         del self.dict_action[key_action]
                         # --------------------------------------------------------------------------------------------
                     except ConnectionError as _conErr:
-                        stringhelpers.info("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+                        stringhelpers.err("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
 
 
 
@@ -300,7 +300,7 @@ class MegaAction(threading.Thread):
                 except Exception as _errorFinal:
                     if len(final_result_output) > 0:
                         output_result[key]['final_output'] = final_result_output[0]
-                    _strError = "MEGA ACTION CALCULATOR FINAL_OUTPUT  COMMAND_TYPE %d ERROR %s | THREAD %s" % (command_type, _errorFinal, self.name)
+                    _strError = "\nMEGA ACTION CALCULATOR FINAL_OUTPUT  COMMAND_TYPE %d ERROR %s | THREAD %s" % (command_type, _errorFinal, self.name)
                     stringhelpers.err(_strError)
 
 

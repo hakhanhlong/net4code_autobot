@@ -82,10 +82,10 @@ class BaseHandler:
         self.session.close()
 
     def log(self, logfile=''):
-        if logfile:
-            self.session.logfile = open(logfile, 'w')
-        else:
-            self.session.logfile_read = sys.stdout
+        #if logfile:
+        self.session.logfile = open(logfile, 'w')
+        #else:
+        self.session.logfile_read = sys.stdout
 
 
 
