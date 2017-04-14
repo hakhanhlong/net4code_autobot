@@ -100,20 +100,13 @@ class IOSXRHandler(BaseHandler):
             self.session.sendline(command)
             time.sleep(0.3)
             self.session.readline()
-            if self.session.buffer is not '':
-                self.output_result.append(self.session.buffer)
-            else:
-                self.blank_lines(2)
-                self.output_result.append(self.session.buffer)
             index = self.session.expect_list(prompt, timeout=timeout)
             if index == 0:
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 1:
-                self.output_result.append(self.session.buffer)
                 pass
             elif index == 2:
                 self.session.sendline('')
-                self.output_result.append(self.session.buffer)
                 self.session.expect_list(prompt, timeout=timeout)
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 3:
@@ -122,28 +115,35 @@ class IOSXRHandler(BaseHandler):
                 else:
                     self.session.sendcontrol('u')
                     self.session.sendline('')
-                    self.output_result.append(self.session.buffer)
                     index = self.session.expect_list(prompt, timeout=timeout)
                     if index == 0:
                         if blanks > 0: self.blank_lines(blanks)
             elif index == 4:  # xu ly more
                 self.session.sendline(' ')
-                #self.output_result.append(self.session.buffer)
                 while 1:
                     time.sleep(0.2)
                     index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout=1)
                     if index == 1:
                         self.session.sendline(' ')
-                        self.output_result.append(self.session.buffer)
                     else:
-                        self.output_result.append(self.session.buffer)
                         break
             elif index == 5:
                 pass
+            elif index == 6:
+                pass
 
-        self.blank_lines(2)
-        self.output_result.append(self.session.buffer)
+
+        #self.blank_lines(1)
+        #if self.session.buffer is not '':
+            #self.output_result.append(self.session.buffer)
+
+
         if terminal:
             self.session.terminate(True)
+
+
+    def terminal(self):
+        self.session.terminate(True)
+
 
 

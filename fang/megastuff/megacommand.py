@@ -63,7 +63,8 @@ class MegaCommand(threading.Thread):
                         'command_id': self.data_command['command_id'],
                         'device_id': self.data_command["test_device"],
                         'console_log': result_fang,
-                        'result': dict()
+                        'result': dict(),
+                        'command': command
                     }
 
                     # processing parsing command follow output ###########################################
@@ -91,7 +92,8 @@ class MegaCommand(threading.Thread):
                         'command_id': self.data_command['command_id'],
                         'device_id': self.data_command["test_device"],
                         'console_log': result_fang,
-                        'result': dict()
+                        'result': dict(),
+                        'command': command
                     }
 
                     # processing parsing command follow output ###########################################
@@ -139,7 +141,7 @@ class MegaCommand(threading.Thread):
                     else:
                         if end_by == 'end_row':
                             end_by = '\r\n'
-                        _ret_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by)
+                        _ret_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by).strip()
                         output_result.append({'value': _ret_value, 'compare': True})
                         cmd_log['result']['outputs'] = output_result
                         cmd_log['result']['final_output'] = True
@@ -155,12 +157,12 @@ class MegaCommand(threading.Thread):
                             compare = output_item['compare']
                             if end_by == 'end_row':
                                 end_by = '\r\n'
-                            compare_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by)
+                            compare_value = stringhelpers.find_between(cmd_log['console_log'], start_by, end_by).strip()
                             if compare_value is not None or compare_value is not '':
                                 if compare != "contains":
                                     compare_value = int(compare_value)
                                     standard_value = int()
-                                retvalue_compare = self.func_compare(compare, standard_value, compare_value.strip())
+                                retvalue_compare = self.func_compare(compare, standard_value, compare_value)
                                 output_result.append({'value': compare_value, 'compare': retvalue_compare})
                                 # save final result of each output
                                 final_result_output.append(retvalue_compare)

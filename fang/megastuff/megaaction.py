@@ -16,8 +16,9 @@ class MegaAction(threading.Thread):
         self.dict_action = dict_action
         self._request = RequestHelpers()
         self.data_command = None
-        self.action_log = {'result':{'outputs':[]}}
+        self.action_log = {'result':{'outputs':dict()}}
         self.fang = None
+        self.log_output_file_name = None
 
 
     def run(self):
@@ -47,6 +48,8 @@ class MegaAction(threading.Thread):
                 }
 
                 key_list_command = "%s|%s" % (device['vendor'],device['os'])
+                self.log_output_file_name = "action_%s.log" % (self.data_action['action_id'])
+                self.action_log['result']['outputs'][key_list_command] = []
                 _list_action_commands = self.data_action['commands'][key_list_command]
                 _dict_list_command = dict()
                 _dict_list_params = self.data_action['test_args']
@@ -65,27 +68,56 @@ class MegaAction(threading.Thread):
                 if len(_array_step) > 0:
                     fac = FactoryConnector(**parameters)
                     print("MEGA ACTION FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (parameters['host'], parameters['port'], parameters['device_type']))
-                    self.fang = fac.execute_keep_alive()
+                    self.fang = fac.execute_keep_alive(loginfo=self.log_output_file_name)
+
+                    compare_final_output = []
 
                     for step in _array_step:
                         _command_running = _dict_list_command[step]
                         #if _command_running['dependency'] == '0':
                         command_id = _command_running.get('command_id', 0)
-                        if command_id > 0:
+                        if command_id > 0: #command_id > 0
                             if int(_command_running['dependency']) > 0: # run need compare
                                 output_info = self.process_each_command(command_id, _dict_list_params)
-                                self.action_log['result']['outputs'].append(output_info)
+                                self.action_log['result']['outputs'][key_list_command].append(output_info)
                                 stringhelpers.info("step %s: %s" % (step, str(output_info)))
-                                pass
-                            else: # run not need compare
+                            else: # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params)
-                                self.action_log['result']['outputs'].append(output_info)
-                                stringhelpers.info("step %s: %s" % (step,str(output_info)))
-                                pass
-
+                                self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                stringhelpers.info("step %s: %s" % (step, str(output_info)))
+                                if int(step) > 1:
+                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
+                                        compare_final_output.append(True)
+                                    else:
+                                        self.action_log['final_output'] = False
+                                        compare_final_output = []
+                                        break
                         else: #last command in actions check point
                             pass
+
+                    #-------------- compare final_output for action ----------------------------------------------------
+                    try:
+                        if len(compare_final_output) > 0:
+                            first_value = None
+                            count = 0
+                            for x in compare_final_output:
+                                if count == 0:
+                                    first_value = x
+                                else:
+                                    first_value = func_compare('=', first_value, x)
+                                count = count + 1
+
+                            self.action_log['final_output'] = first_value
+
+                    except Exception as ex:
+                        stringhelpers.info("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
+
+
+                    #---------------------------------------------------------------------------------------------------
+
+                    self.fang.remove_file_log(self.log_output_file_name)
                     stringhelpers.warn(str(self.action_log))
+                    self.fang.terminal() # finished fang command
                 '''##################################################################################################'''
 
                 self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_GETBY_ACTIONID % (self.data_action['action_id'])
@@ -154,14 +186,16 @@ class MegaAction(threading.Thread):
                 command = self.data_command['command']
             ###########################################################################################
             commands = [command]
-            stringhelpers.info_green(command)
+            #stringhelpers.info_green(command)
 
             self.fang.execute_action_command(commands, blanks=2, error_reporting=True, timeout=30, terminal=False)
-            result_fang = self.fang.get_output()
+            #result_fang = self.fang.get_output()
+            result_fang = self.fang.get_action_output(self.log_output_file_name)
+
 
             # processing parsing command follow output ###########################################
             command_type = self.data_command['type']
-            action_command_log = self.parsing(command_type, command_id ,result_fang)
+            action_command_log = self.parsing(command_type, command_id ,result_fang, commands[0])
             return action_command_log
             ######################################################################################
         except Exception as e:
@@ -172,7 +206,7 @@ class MegaAction(threading.Thread):
             return None
 
 
-    def parsing(self, command_type = 0, command_id = 0, result_fang = None):
+    def parsing(self, command_type = 0, command_id = 0, result_fang = None, command_text = None):
         final_result_output = []
         output_result = dict()
         key = str(command_id)
@@ -184,18 +218,22 @@ class MegaAction(threading.Thread):
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
-                        result = {'value':0,'compare': True}
+                        result = {'value':0,'compare': True, 'command_type': command_type,
+                                  'command_id': command_id, 'command_text':command_text,
+                                  'console_log': result_fang}
                         output_result[key]['output'].append(result)
-                        output_result[key]['console_log'] = result_fang
+                        #output_result[key]['console_log'] = result_fang
                         output_result[key]['final_output'] = True
                     else:
                         if end_by == 'end_row':
                             end_by = '\r\n'
-                        _ret_value = stringhelpers.find_between(result_fang, start_by, end_by)
+                        _ret_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
 
-                        result = {'value': _ret_value, 'compare': True}
+                        result = {'value': _ret_value, 'compare': True, 'command_type': command_type,
+                                  'command_id': command_id, 'command_text':command_text,
+                                  'console_log': result_fang}
                         output_result[key]['output'].append(result)
-                        output_result[key]['console_log'] = result_fang
+                        #output_result[key]['console_log'] = result_fang
                         output_result[key]['final_output'] = True
                 return output_result
             elif command_type == 2 or command_type == 1:
@@ -208,25 +246,31 @@ class MegaAction(threading.Thread):
                         compare = output_item['compare']
                         if end_by == 'end_row':
                             end_by = '\r\n'
-                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by)
+                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
                         if compare_value is not None or compare_value is not '':
                             if compare != "contains":
                                 compare_value = int(compare_value)
                                 standard_value = int(standard_value)
                             retvalue_compare = func_compare(compare, standard_value, compare_value)
                             if compare_value == '':
-                                result = {'value': result_fang, 'compare': retvalue_compare} # if compare_value empty save raw data
+                                result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare,
+                                          'command_type':command_type, 'command_id':command_id,
+                                          'command_text':command_text, 'console_log': result_fang} # if compare_value empty save raw data
                             else:
-                                result = {'value': compare_value, 'compare': retvalue_compare}
+                                result = {'value': compare_value, 'compare': retvalue_compare,
+                                        'compare_operator': compare, 'command_type': command_type,'command_id': command_id,
+                                          'command_text':command_text, 'console_log': result_fang}
                             output_result[key]['output'].append(result)
                             # save final result of each output
                             final_result_output.append(retvalue_compare)
                     except Exception as _error:
                         _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _error, self.name)
-                        stringhelpers.err(_strError)
-                        result = {'value': compare_value, 'compare': retvalue_compare, 'error': _strError}
+                        result = {'value': compare_value, 'compare': retvalue_compare, 'error': _strError,
+                                  'command_type': command_type, 'command_id': command_id,
+                                  'command_text':command_text, 'console_log': result_fang}
                         output_result[key]['output'].append(result)
                         output_result[key]['parsing_status'] = 'ERROR'
+                        stringhelpers.err(_strError)
 
 
                 # determine operator for final output

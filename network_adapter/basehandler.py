@@ -1,6 +1,7 @@
 import pexpect
 import sys
 import re
+import os
 
 
 class BaseHandler:
@@ -28,7 +29,7 @@ class BaseHandler:
 
 
 
-        self.session = pexpect.spawnu(cmd, timeout=self.timeout, maxread=1024 * 100000, searchwindowsize=1024 * 4, encoding='utf8')
+        self.session = pexpect.spawnu(cmd, timeout=self.timeout, maxread=1024 * 2, searchwindowsize=1024 * 4, encoding='utf8')
 
     def auth_failed(self, message):
         self.session.terminate()
@@ -88,6 +89,9 @@ class BaseHandler:
 
 
 
+    #-----------------------------------------------------------------------------------------------
+
+
     def blank_lines(self, blanks):
         for i in range(blanks):
             self.session.sendline('')
@@ -121,6 +125,50 @@ class BaseHandler:
         result = result.replace("--           [K", "")
         result = result.replace("           ", "")
         return result
+
+
+    def get_action_output(self, filelog=None):
+
+        try:
+
+            result = open(filelog, 'r')
+            result = result.read()
+
+
+            result = result.replace("--More--", "")
+            result = result.replace("--More - -", "")
+            result = result.replace("[K            [K", "")
+            result = result.replace("[K", "")
+            result = result.replace("          ", "")
+            result = result.replace("         ", "")
+
+            if "---(more)---" in result:  # process replace junos
+                for i in range(101):
+                    result = result.replace("---(more " + str(i) + "%)---", "")
+
+                result = result.replace("---(more)---", "")
+                result = result.replace("\r                                        \r", "")
+
+            result = result.replace("--More", "")
+            result = result.replace("--", "")
+            result = result.replace("[K", "")
+            result = result.replace("[K", "")
+            result = result.replace("[K --More", "")
+            result = result.replace("--           [K", "")
+            result = result.replace("           ", "")
+            result = result.replace("          [K     ", "")
+            result = result.replace("", "")
+            result = result.replace("\00", "")
+
+
+            open(filelog, "w").close()
+
+            return result
+        except Exception as error:
+            pass
+
+    def remove_file_log(self, filelog=None):
+        os.remove(filelog)
 
 
 
