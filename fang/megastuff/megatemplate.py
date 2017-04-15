@@ -6,7 +6,16 @@ from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
 import time
 
-class MegaAction(threading.Thread):
+
+
+class Template(threading.Thread):
+    def __init__(self):
+        pass
+
+    def run(self):
+        pass
+
+class Action(threading.Thread):
     """ Thread instance each process mega """
     def __init__(self, name, data_action = None, dict_action = {}):
         threading.Thread.__init__(self)
@@ -89,7 +98,6 @@ class MegaAction(threading.Thread):
                                     stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 else:
                                     stringhelpers.err("MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
-                                    previous_final_output.append(False)
                                     continue
                             else: # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params)
@@ -324,3 +332,4 @@ class MegaAction(threading.Thread):
             _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _errorException, self.name)
             stringhelpers.err(_strError)
             return  output_result
+
