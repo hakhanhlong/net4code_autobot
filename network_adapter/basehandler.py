@@ -87,6 +87,12 @@ class BaseHandler:
         #else:
         self.session.logfile_read = sys.stdout
 
+    def log_standard(self, logfile=''):
+        if logfile:
+            self.session.logfile = open(logfile, 'w')
+        else:
+            self.session.logfile_read = sys.stdout
+
 
 
     #-----------------------------------------------------------------------------------------------

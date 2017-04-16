@@ -86,11 +86,11 @@ class JunosHandler(BaseHandler):
                 if error_reporting is True:
                     self.command_error_reporter(command)
             self.session.sendline('')
+            #time.sleep(0.5)
             #self.output_result.append(self.session.buffer)
             if error_reporting is True:
                 while 1:
-                    #time.sleep(0.2)
-                    index = self.session.expect_list(prompt, timeout=1)
+                    index = self.session.expect_list(prompt, timeout=-1)
                     if index == 4:
                         self.session.sendline('')  # send space get more information
                         #self.output_result.append(self.session.buffer)
@@ -99,8 +99,7 @@ class JunosHandler(BaseHandler):
                         break
             else:
                 while 1:
-                    #time.sleep(0.2)
-                    index = self.session.expect_list([prompt[0], prompt[1], prompt[4]], timeout=1)
+                    index = self.session.expect_list([prompt[0], prompt[1], prompt[4]], timeout=-1)
                     if index == 2:
                         self.session.sendline('')  # send space get more information
                         #self.output_result.append(self.session.buffer)
@@ -112,13 +111,14 @@ class JunosHandler(BaseHandler):
             if index == 0:
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 1:
+                #time.sleep(3)
                 pass
             else:
                 self.command_error_reporter(command)
 
-        '''self.blank_lines(2)
-        if self.session.buffer is not '':
-            self.output_result.append(self.session.buffer)'''
+        #self.blank_lines(2)
+        #if self.session.buffer is not '':
+            #self.output_result.append(self.session.buffer)
         if terminal:
             self.session.terminate(True)
 

@@ -14,7 +14,7 @@ class FactoryConnector:
         self.port = port,
         self.timeout = timeout
 
-    def execute(self, commands=[], loginfo=''):
+    def execute(self, commands=[], loginfo='longhk'):
 
         parameters = {
             'host': self.host,
@@ -27,7 +27,7 @@ class FactoryConnector:
         if 'ios' == self.device_type:
             ios = IOSHandler(**parameters)
             ios.login()
-            ios.log(loginfo)
+            ios.log_standard(loginfo)
             ios.execute_command(commands, blanks = 2, error_reporting = True)
             #result = ios.get_output()
             #ios.logout()
@@ -35,7 +35,7 @@ class FactoryConnector:
         if 'ios-xr' == self.device_type:
             ios = IOSXRHandler(**parameters)
             ios.login()
-            ios.log(loginfo)
+            ios.log_standard(loginfo)
             #ios.read_result()
             ios.execute_command(commands, blanks = 2, error_reporting = True)
             #result = ios.get_output()
@@ -44,7 +44,7 @@ class FactoryConnector:
         elif 'junos' == self.device_type:
             junos = JunosHandler(**parameters)
             junos.login()
-            junos.log(loginfo)
+            junos.log_standard(loginfo)
             junos.execute_command(commands, blanks=2, error_reporting=True)
             #junos.execute_command(commands, blanks=2, error_reporting=False)
             #result = junos.get_output()

@@ -27,7 +27,7 @@ class MegaManager(threading.Thread):
                 stringhelpers.print_bold("Archieving info MEGA number: %d" % self.counter)
 
                 #--------------- MEGA RUN COMMAND TEST -----------------------------------------------------------------
-                '''_request.url = self.requestURL.MEGA_URL_LIST_COMMAND_UNTESTED
+                _request.url = self.requestURL.MEGA_URL_LIST_COMMAND_UNTESTED
                 _list_commands = _request.get().json()
                 if len(_list_commands) > 0:
                     for x in _list_commands:
@@ -38,7 +38,7 @@ class MegaManager(threading.Thread):
                             dict_command[key_command] = key_command
                             mega_command = MegaCommand("Thread-Command-%d" % (x['command_id']), x, dict_command)
                             mega_command.start()
-                time.sleep(5)'''
+                time.sleep(3)
                 #-------------------------------------------------------------------------------------------------------
 
                 #-------------- MEGA RUN ACTION TEST -------------------------------------------------------------------
@@ -53,7 +53,7 @@ class MegaManager(threading.Thread):
                             dict_action[key_action] = key_action
                             mega_action = MegaAction("Thread-Action-%d" % (x['action_id']), x, dict_action)
                             mega_action.start()
-                time.sleep(60)
+                time.sleep(3)
                 #-------------------------------------------------------------------------------------------------------
 
 

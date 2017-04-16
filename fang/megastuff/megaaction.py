@@ -142,14 +142,14 @@ class MegaAction(threading.Thread):
                     try:
                         self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_UPDATE % (_request_action_log[0]['log_id'])
                         self._request.params = self.action_log
-                        #self._request.put()
+                        self._request.put()
                         stringhelpers.info("MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("UPDATE ACTIONS LOG SUCCESS", self.name))
 
 
                         #---------------update mega_status to action------------------------------------------------
                         self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
                         self._request.params = {'mega_status':'tested'}
-                        #self._request.put()
+                        self._request.put()
                         key_action = 'action_%d' % (self.data_action['action_id'])
                         del self.dict_action[key_action]
                         #--------------------------------------------------------------------------------------------
@@ -162,12 +162,12 @@ class MegaAction(threading.Thread):
                     try:
                         self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_CREATE
                         self._request.params = self.action_log
-                        #self._request.post()
+                        self._request.post()
                         stringhelpers.info("MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("INSERT ACTIONS LOG SUCCESS", self.name))
                         # ---------------update mega_status to action------------------------------------------------
                         self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
                         self._request.params = {'mega_status': 'tested'}
-                        #self._request.put()
+                        self._request.put()
                         key_action = 'action_%d' % (self.data_action['action_id'])
                         del self.dict_action[key_action]
                         # --------------------------------------------------------------------------------------------
@@ -231,8 +231,8 @@ class MegaAction(threading.Thread):
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
-                        result = {'value':0,'compare': True, 'command_type': command_type,
-                                  'command_id': command_id, 'command_text':command_text,
+                        result = {'value': '0','compare': True, 'command_type': str(command_type),
+                                  'command_id': str(command_id), 'command_text':command_text,
                                   'console_log': result_fang}
                         output_result[key]['output'].append(result)
                         #output_result[key]['console_log'] = result_fang
@@ -242,8 +242,8 @@ class MegaAction(threading.Thread):
                             end_by = '\r\n'
                         _ret_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
 
-                        result = {'value': _ret_value, 'compare': True, 'command_type': command_type,
-                                  'command_id': command_id, 'command_text':command_text,
+                        result = {'value': _ret_value, 'compare': True, 'command_type': str(command_type),
+                                  'command_id': str(command_id), 'command_text':command_text,
                                   'console_log': result_fang}
                         output_result[key]['output'].append(result)
                         #output_result[key]['console_log'] = result_fang
@@ -260,26 +260,29 @@ class MegaAction(threading.Thread):
                         if end_by == 'end_row':
                             end_by = '\r\n'
                         compare_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
-                        if compare_value is not None or compare_value is not '':
-                            if compare != "contains":
-                                compare_value = int(compare_value)
-                                standard_value = int(standard_value)
-                            retvalue_compare = func_compare(compare, standard_value, compare_value)
-                            if compare_value == '':
-                                result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare,
-                                          'command_type':command_type, 'command_id':command_id,
-                                          'command_text':command_text, 'console_log': result_fang} # if compare_value empty save raw data
-                            else:
-                                result = {'value': compare_value, 'compare': retvalue_compare,
-                                        'compare_operator': compare, 'command_type': command_type,'command_id': command_id,
-                                          'command_text':command_text, 'console_log': result_fang}
-                            output_result[key]['output'].append(result)
-                            # save final result of each output
-                            final_result_output.append(retvalue_compare)
+                        if compare_value is '' or compare_value is None:
+                            compare_value = result_fang
+                        #if compare_value is not None or compare_value is not '':
+                        if compare != "contains":
+                            compare_value = int(compare_value)
+                            standard_value = int(standard_value)
+                        retvalue_compare = func_compare(compare, standard_value, compare_value)
+                        if compare_value == '':
+                            result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare,
+                                      'command_type':str(command_type), 'command_id':str(command_id),
+                                      'command_text':command_text, 'console_log': result_fang} # if compare_value empty save raw data
+                        else:
+                            result = {'value': compare_value, 'compare': retvalue_compare,
+                                     'compare_operator': compare, 'command_type': str(command_type),
+                                     'command_id': str(command_id),
+                                     'command_text':command_text, 'console_log': result_fang}
+                        output_result[key]['output'].append(result)
+                        # save final result of each output
+                        final_result_output.append(retvalue_compare)
                     except Exception as _error:
                         _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _error, self.name)
                         result = {'value': compare_value, 'compare': retvalue_compare, 'error': _strError,
-                                  'command_type': command_type, 'command_id': command_id,
+                                  'command_type': command_type, 'command_id': str(command_id),
                                   'command_text':command_text, 'console_log': result_fang}
                         output_result[key]['output'].append(result)
                         output_result[key]['parsing_status'] = 'ERROR'
