@@ -19,6 +19,7 @@ class MegaAction(threading.Thread):
         self.action_log = {'result':{'outputs':dict()}}
         self.fang = None
         self.log_output_file_name = None
+        # sao the nay
 
 
     def run(self):
