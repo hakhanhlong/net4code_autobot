@@ -193,8 +193,12 @@ class MegaAction(threading.Thread):
             ################### process args for command ##############################################
             if len(_dict_list_params.items()) > 0:
                 for k, v in _dict_list_params.items():
-                    command = self.data_command['command']
-                    command = command.replace('@{%s}' % (k), v)
+                    if command is None:
+                        command = self.data_command['command']
+                        command = command.replace('@{%s}' % (k), v)
+                    else:
+                        command = command.replace('@{%s}' % (k), v)
+
             else:
                 command = self.data_command['command']
             ###########################################################################################
