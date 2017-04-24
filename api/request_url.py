@@ -21,4 +21,7 @@ class RequestURL:
         self.MEGA_URL_ACTIONLOG_UPDATE = os.environ.get('MEGA_URL_ACTIONLOG_UPDATE')
 
 
+        self.MEGA_URL_LIST_TEMPLATE_UNTESTED = os.environ.get('MEGA_URL_LIST_TEMPLATE_UNTESTED')
+
+
 

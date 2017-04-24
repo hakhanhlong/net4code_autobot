@@ -6,14 +6,106 @@ from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
 import time
 
+from fang.foundation.entitylinked import LinkedList
 
 
-class Template(threading.Thread):
-    def __init__(self):
-        pass
+
+class MegaTemplate(threading.Thread):
+    """ Thread instance each process template """
+    def __init__(self, name, data_template = None, dict_template = {}):
+        threading.Thread.__init__(self)
+        self.name = name
+        self.data_template = data_template
+        self.dict_template = dict_template
+        self.requestURL = RequestURL()
+        self._request = RequestHelpers()
+        self.info_fang = self.buildinfo()
 
     def run(self):
-        pass
+        if self.info_fang is not None:
+            for fang in self.info_fang['devices']: # fang sub template to each device
+                for template in fang['sub_templates']: # traverse sub each template of device
+                    actions = template['actions'] # get actions of each sub template
+                    for action in actions: #run each action
+                        print(action)
+
+        else:
+            stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
+
+    def buildinfo(self):
+        data_fang = dict(devices=[])
+        key_dict_device = 'devices'
+        #----------------device list------------------------------------------------------------------------------------
+        test = self.data_template['run_devices'].items()
+        run_devices = sorted(self.data_template['run_devices'].items(), reverse=False)
+        for k, v in run_devices: # get list device id need fang and role of each device
+            #k = deviceid, v = role of device
+            device_role_name = v
+            ll_actions = LinkedList() #save actions to double linked list
+            device_fang = dict(device_id = k, role=device_role_name)
+            device_fang['sub_templates'] = []
+            key_maps = sorted(self.data_template['map'].keys())
+            try:
+                self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_fang['device_id'])
+                device = self._request.get().json()
+                device_fang['device_info'] = dict(
+                    port_mgmt = device['port_mgmt'],
+                    method = device['method'],
+                    vendor = device['vendor'],
+                    os = device['os'],
+                    username = device['username'],
+                    password = device['password'],
+                    ip_mgmt = device['ip_mgmt'],
+                    device_id = device['device_id']
+                )
+                device_fang['vendor_ios'] = "%s|%s" % (device['vendor'],device['os']) # vendor+os = e.x: Cisco|ios-xr
+
+                for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
+                    _v = self.data_template['map'][_k]
+                    role_exist = _v.get(device_role_name, None)
+
+                    if role_exist is not None:  # compare role of device == role of template
+                        item_template = dict()
+                        item_template['name'] = self.data_template['nameMap'][_k]
+                        count_step = 0
+                        for action in self.data_template['sub_templates'][int(_k)]:  # list actions
+                            count_step = count_step + 1  # step
+                            dict_action = dict()
+                            dict_action[str(count_step)] = action
+
+                            #process argument for action ---------------------------------------------------------------
+                            dict_argument = self.data_template['run_args'].get(_k, None) #level get by number template
+                            if dict_argument is not None:
+                                dict_argument = dict_argument.get(device_role_name, None) # level get by role
+                                if dict_argument is not None:
+
+                                    action_id = action.get('action_id', 0)
+                                    dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
+                                    if dict_argument is not None:
+                                        dict_argument = dict_argument.get(device_fang['vendor_ios'], None) # level get by vendor+ios
+                                        if dict_argument is not None:
+                                            dict_action['args'] = dict_argument
+
+                            #-------------------------------------------------------------------------------------------
+
+
+                            ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
+
+                        item_template['actions'] = ll_actions
+                        device_fang['sub_templates'].append(item_template)
+
+                data_fang[key_dict_device].append(device_fang)
+
+            except Exception as error:
+                stringhelpers.err("MEGA TEMPLATE BUILD DATA ERROR %s\n\r" % (error))
+                return None
+
+
+        return data_fang
+
+
+
+
 
 class Action(threading.Thread):
     """ Thread instance each process mega """
