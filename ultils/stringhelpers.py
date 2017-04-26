@@ -1,4 +1,6 @@
 import textwrap
+import random
+import string
 
 HEADER = '\033[95m'
 OKBLUE = '\033[94m'
@@ -7,6 +9,9 @@ WARNING = '\033[93m'
 FAIL = '\033[91m'
 ENDC = '\033[0m'
 BOLD = "\033[1m"
+
+def generate_random_keystring(length):
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(length))
 
 
 def print_bold(msg, end='\n'):

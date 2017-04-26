@@ -4,7 +4,7 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
-import time
+
 
 class MegaAction(threading.Thread):
     """ Thread instance each process mega """
