@@ -159,14 +159,14 @@ class MegaAction(threading.Thread):
                             self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_UPDATE % (
                             _request_action_log[0]['log_id'])
                             self._request.params = self.action_log
-                            #self._request.put()
+                            self._request.put()
                             stringhelpers.info(
                                 "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("UPDATE ACTIONS LOG SUCCESS", self.name))
 
                             # ---------------update mega_status to action------------------------------------------------
                             self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
                             self._request.params = {'mega_status': 'tested'}
-                            #self._request.put()
+                            self._request.put()
                             key_action = 'action_%d' % (self.data_action['action_id'])
                             del self.dict_action[key_action]
                             # --------------------------------------------------------------------------------------------
@@ -179,13 +179,13 @@ class MegaAction(threading.Thread):
                         try:
                             self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_CREATE
                             self._request.params = self.action_log
-                            #self._request.post()
+                            self._request.post()
                             stringhelpers.info(
                                 "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("INSERT ACTIONS LOG SUCCESS", self.name))
                             # ---------------update mega_status to action------------------------------------------------
                             self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
                             self._request.params = {'mega_status': 'tested'}
-                            #self._request.put()
+                            self._request.put()
                             key_action = 'action_%d' % (self.data_action['action_id'])
                             del self.dict_action[key_action]
                             # --------------------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ class MegaAction(threading.Thread):
                 if len(_array_step_rollback) > 0:
                     print("MEGA ACTION ROLLBACK FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (
                     parameters['host'], parameters['port'], parameters['device_type']))
-                    self.fang = fac.execute_keep_alive(loginfo=self.log_output_file_name)
+                    #self.fang = fac.execute_keep_alive(loginfo=self.log_output_file_name)
 
                     compare_final_output = []
                     previous_final_output = []
