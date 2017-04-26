@@ -20,14 +20,18 @@ class MegaTemplate(threading.Thread):
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
         self.info_fang = self.buildinfo()
+        self.result_templates = []
 
     def run(self):
         if self.info_fang is not None:
             for fang in self.info_fang['devices']: # fang sub template to each device
-                for template in fang['sub_templates']: # traverse sub each template of device
-                    actions = template['actions'] # get actions of each sub template
-                    for action in actions: #run each action
-                        print(action)
+                for sub_template in fang['sub_templates']: # traverse sub template of each device
+                    subtemplate_thread = SubTemplate(sub_template['name'], sub_template, fang['device_id'])
+                    subtemplate_thread.start()
+                    self.result_templates.append(subtemplate_thread.join())
+
+            #print(self.result_templates)
+
 
         else:
             stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
@@ -106,31 +110,32 @@ class MegaTemplate(threading.Thread):
 
 
 
-
+''' --------------------------------- Action ------------------------------------------------------------------------'''
 class Action(threading.Thread):
     """ Thread instance each process mega """
-    def __init__(self, name, data_action = None, dict_action = {}):
+    def __init__(self, name, data_action = None, dict_action = {}, device_id = 0):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
         self.requestURL = RequestURL()
-        self.dict_action = dict_action
         self._request = RequestHelpers()
+        self.dict_action = dict_action
         self.data_command = None
         self.action_log = {'result':{'outputs':dict()}}
         self.fang = None
         self.log_output_file_name = None
+        self.device_id = device_id
 
 
     def run(self):
 
-        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (self.data_action["test_device"])
+        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (self.device_id)
 
         try:
             device = self._request.get().json()
             try:
                 if device['status_code'] == 500: #device not exist
-                    stringhelpers.err("DEVICE ID %s NOT EXIST | THREAD %s" % (self.data_action["test_device"], self.name))
+                    stringhelpers.err("DEVICE ID %s NOT EXIST | THREAD %s" % (self.device_id, self.name))
             except: #process fang test device by command
                 host = device['ip_mgmt']
                 port = int(device['port_mgmt'])
@@ -424,4 +429,36 @@ class Action(threading.Thread):
             _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _errorException, self.name)
             stringhelpers.err(_strError)
             return  output_result
+''' -----------------------------------------------------------------------------------------------------------------'''
+
+
+class SubTemplate(threading.Thread):
+    '''sub template'''
+    def __init__(self, name, subtemplate=None, device_info=None):
+        threading.Thread.__init__(self)
+        self.subtemplate = subtemplate
+        self.name = name
+        self.device_info = device_info
+        self.requestURL = RequestURL()
+        self._request = RequestHelpers()
+
+    def run(self):
+        try:
+            if self.subtemplate is not None:
+                actions = self.subtemplate['actions']  # get actions of each sub template # action contain linkedlist
+                #print(actions[0])
+                for action in actions:  # run each action
+                    for k, v in action.items():
+                        #self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (v['action_id'])
+                        #action_data = self._request.get().json()
+                        if k is not 'args':
+                            print(v) # action
+                        else:
+                            print(v) # params args for action
+        except Exception as exError:
+            stringhelpers.err("[ERROR]-[%s]: %s" % (self.name, exError))
+
+    def join(self):
+        threading.Thread.join(self)
+        return 1
 
