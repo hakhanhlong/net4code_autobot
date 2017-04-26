@@ -72,8 +72,8 @@ class MegaManager(threading.Thread):
                             mega_template = MegaTemplate("Thread-Template-%d" % (x['template_id']), x, dict_template)
                             mega_template.start()
                     pass
-                # ---------------------------------------------------------------------------------------------------------'''
-                time.sleep(1000)
+                # ---------------------------------------------------------------------------------------------------------
+                time.sleep(1000)'''
 
             except Exception as e:
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))

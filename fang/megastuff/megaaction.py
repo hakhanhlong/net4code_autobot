@@ -51,7 +51,9 @@ class MegaAction(threading.Thread):
                 key_list_command = "%s|%s" % (device['vendor'],device['os'])
                 key_rollback = 'rollback'
                 self.log_output_file_name = "action_%s.log" % (self.data_action['action_id'])
-                self.action_log['result']['outputs'][key_list_command] = []
+                self.action_log['result']['outputs'][key_list_command] = {}
+                self.action_log['result']['outputs'][key_list_command]['config'] = []
+                self.action_log['result']['outputs'][key_list_command]['rollback'] = []
 
                 _list_action_commands = self.data_action['commands'][key_list_command]['config'] #list action_command config
                 _list_action_rollback = self.data_action['commands'][key_list_command]['rollback'] #list action_command rollback
@@ -101,11 +103,12 @@ class MegaAction(threading.Thread):
                             if dependency > 0: # run need compare
                                 dependStep = dependency
                                 if(int(_command_running['condition']) == int(previous_final_output[dependStep-1])):
+
                                     output_info = self.process_each_command(command_id, _dict_list_params)
 
                                     previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                    self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                    self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
                                     stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 else:
                                     stringhelpers.err("MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
@@ -116,7 +119,7 @@ class MegaAction(threading.Thread):
 
                                 previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 if int(step) > 1:
                                     if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
@@ -146,54 +149,6 @@ class MegaAction(threading.Thread):
                         stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
                     #---------------------------------------------------------------------------------------------------
 
-                    #------------------------------------ process save log action --------------------------------------
-
-                    self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_GETBY_ACTIONID % (
-                    self.data_action['action_id'])
-                    _request_action_log = self._request.get().json()
-                    if len(_request_action_log) > 0:  # update action log
-
-                        self.action_log['action_id'] = self.data_action['action_id']
-                        self.action_log['device_id'] = self.data_action["test_device"]
-                        try:
-                            self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_UPDATE % (
-                            _request_action_log[0]['log_id'])
-                            self._request.params = self.action_log
-                            self._request.put()
-                            stringhelpers.info(
-                                "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("UPDATE ACTIONS LOG SUCCESS", self.name))
-
-                            # ---------------update mega_status to action------------------------------------------------
-                            self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
-                            self._request.params = {'mega_status': 'tested'}
-                            self._request.put()
-                            key_action = 'action_%d' % (self.data_action['action_id'])
-                            del self.dict_action[key_action]
-                            # --------------------------------------------------------------------------------------------
-                        except ConnectionError as _conErr:
-                            stringhelpers.info("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-                    else:  # insert action log
-                        self.action_log['action_id'] = self.data_action['action_id']
-                        self.action_log['device_id'] = self.data_action["test_device"]
-
-                        try:
-                            self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_CREATE
-                            self._request.params = self.action_log
-                            self._request.post()
-                            stringhelpers.info(
-                                "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("INSERT ACTIONS LOG SUCCESS", self.name))
-                            # ---------------update mega_status to action------------------------------------------------
-                            self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
-                            self._request.params = {'mega_status': 'tested'}
-                            self._request.put()
-                            key_action = 'action_%d' % (self.data_action['action_id'])
-                            del self.dict_action[key_action]
-                            # --------------------------------------------------------------------------------------------
-                        except ConnectionError as _conErr:
-                            stringhelpers.err("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-
-                    #---------------------------------------------------------------------------------------------------
-
 
                 '''##################################################################################################'''
 
@@ -218,7 +173,7 @@ class MegaAction(threading.Thread):
 
                                     previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                    self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
                                     stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 else:
                                     stringhelpers.err(
@@ -231,7 +186,7 @@ class MegaAction(threading.Thread):
 
                                 previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                self.action_log['result']['outputs'][key_list_command].append(output_info)
+                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 if int(step) > 1:
                                     if int(output_info[str(command_id)]['final_output']) == int(
@@ -264,6 +219,55 @@ class MegaAction(threading.Thread):
                         # ---------------------------------------------------------------------------------------------------
 
                 '''##################################################################################################'''
+
+                # ------------------------------------ process save log action --------------------------------------
+
+                self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_GETBY_ACTIONID % (
+                    self.data_action['action_id'])
+                _request_action_log = self._request.get().json()
+                if len(_request_action_log) > 0:  # update action log
+
+                    self.action_log['action_id'] = self.data_action['action_id']
+                    self.action_log['device_id'] = self.data_action["test_device"]
+                    try:
+                        self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_UPDATE % (
+                            _request_action_log[0]['log_id'])
+                        self._request.params = self.action_log
+                        self._request.put()
+                        stringhelpers.info(
+                            "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("UPDATE ACTIONS LOG SUCCESS", self.name))
+
+                        # ---------------update mega_status to action------------------------------------------------
+                        self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
+                        self._request.params = {'mega_status': 'tested'}
+                        self._request.put()
+                        key_action = 'action_%d' % (self.data_action['action_id'])
+                        del self.dict_action[key_action]
+                        # --------------------------------------------------------------------------------------------
+                    except ConnectionError as _conErr:
+                        stringhelpers.info("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+                else:  # insert action log
+                    self.action_log['action_id'] = self.data_action['action_id']
+                    self.action_log['device_id'] = self.data_action["test_device"]
+
+                    try:
+                        self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_CREATE
+                        self._request.params = self.action_log
+                        self._request.post()
+                        stringhelpers.info(
+                            "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("INSERT ACTIONS LOG SUCCESS", self.name))
+                        # ---------------update mega_status to action------------------------------------------------
+                        self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
+                        self._request.params = {'mega_status': 'tested'}
+                        self._request.put()
+                        key_action = 'action_%d' % (self.data_action['action_id'])
+                        del self.dict_action[key_action]
+                        # --------------------------------------------------------------------------------------------
+                    except ConnectionError as _conErr:
+                        stringhelpers.err("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+
+                        # ---------------------------------------------------------------------------------------------------
+
 
                 self.fang.remove_file_log(self.log_output_file_name)
                 # stringhelpers.warn(str(self.action_log))
