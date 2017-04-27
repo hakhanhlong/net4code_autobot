@@ -147,5 +147,58 @@ class IOSHandler(BaseHandler):
         if terminal:
             self.session.terminate(True)
 
+    def execute_template_action_command(self, command_list, blanks=0, error_reporting=False, timeout=30, terminal=True):
+        self.output_result = []
+        prompt = self.re_compile([
+            r"^[\w\-/.]+ ?[>#] *(?:\(enable\))? *$",
+            r"\((?:config|cfg)[^\)]*\) ?# *$",
+            r"(?i)^clear.*\[confirm\] *$",
+            r"(?i)^% *(?:ambiguous|incomplete|invalid|unknown|\S+ overlaps).*$",
+            r".*--More"
+        ])
+
+        #self.blank_lines(2)
+        for command in command_list:
+            self.session.sendline(command)
+            time.sleep(0.3)
+            self.session.readline()
+            index = self.session.expect_list(prompt, timeout=timeout)
+            if index == 0:
+                if blanks > 0: self.blank_lines(blanks)
+            elif index == 1:
+                #self.output_result.append(self.session.buffer)
+                pass
+            elif index == 2:
+                self.session.sendline('')
+                #self.output_result.append(self.session.buffer)
+                self.session.expect_list(prompt, timeout=timeout)
+                if blanks > 0: self.blank_lines(blanks)
+            elif index == 3:
+                if error_reporting is True:
+                    self.command_error_reporter(command)
+                else:
+                    self.session.sendcontrol('u')
+                    self.session.sendline('')
+                    #self.output_result.append(self.session.buffer)
+                    index = self.session.expect_list(prompt, timeout=timeout)
+                    if index == 0:
+                        if blanks > 0: self.blank_lines(blanks)
+            elif index == 4 or index == 5:  # xu ly more
+                self.session.sendline(' ')
+                #self.session.sendcontrol('m')
+                while 1:
+                    time.sleep(0.2)
+                    index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout=1)
+                    if index != 1:
+                        break
+                    else:
+                        self.session.sendline(' ')
+
+
+        #self.blank_lines(2)
+
+        if terminal:
+            self.session.terminate(True)
+
     def terminal(self):
         self.session.terminate(True)

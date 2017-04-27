@@ -101,6 +101,7 @@ class IOSXRHandler(BaseHandler):
             time.sleep(0.3)
             self.session.readline()
             index = self.session.expect_list(prompt, timeout=timeout)
+
             if index == 0:
                 if blanks > 0: self.blank_lines(blanks)
             elif index == 1:
@@ -133,7 +134,66 @@ class IOSXRHandler(BaseHandler):
                 pass
 
 
-        #self.blank_lines(1)
+        #self.blank_lines(2)
+        #if self.session.buffer is not '':
+            #self.output_result.append(self.session.buffer)
+
+
+        if terminal:
+            self.session.terminate(True)
+
+
+
+    def execute_template_action_command(self, command_list, blanks=0, error_reporting=False, timeout=30, terminal=True):
+        self.output_result = []
+        prompt = self.re_compile([
+            r"^[\w\-/.]+ ?[>#] *(?:\(enable\))? *$",
+            r"\((?:config|cfg)[^\)]*\) ?# *$",
+            r"(?i)^clear.*\[confirm\] *$",
+            r"(?i)^% *(?:ambiguous|incomplete|invalid|unknown|\S+ overlaps).*$",
+            r".*--More",
+            r".*#"
+        ])
+        #self.blank_lines(2)
+        for command in command_list:
+            self.session.sendline(command)
+            time.sleep(0.3)
+            self.session.readline()
+            index = self.session.expect_list(prompt, timeout=timeout)
+
+            if index == 0:
+                if blanks > 0: self.blank_lines(blanks)
+            elif index == 1:
+                pass
+            elif index == 2:
+                self.session.sendline('')
+                self.session.expect_list(prompt, timeout=timeout)
+                if blanks > 0: self.blank_lines(blanks)
+            elif index == 3:
+                if error_reporting is True:
+                    self.command_error_reporter(command)
+                else:
+                    self.session.sendcontrol('u')
+                    self.session.sendline('')
+                    index = self.session.expect_list(prompt, timeout=timeout)
+                    if index == 0:
+                        if blanks > 0: self.blank_lines(blanks)
+            elif index == 4 or index == 5:  # xu ly more
+                self.session.sendline(' ')
+                while 1:
+                    time.sleep(0.2)
+                    index = self.session.expect_list([pexpect.TIMEOUT, prompt[4]], timeout=1)
+                    if index == 1:
+                        self.session.sendline(' ')
+                    else:
+                        break
+            elif index == 5:
+                pass
+            elif index == 6:
+                pass
+
+
+        #self.blank_lines(2)
         #if self.session.buffer is not '':
             #self.output_result.append(self.session.buffer)
 

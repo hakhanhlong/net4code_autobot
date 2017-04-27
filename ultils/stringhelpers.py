@@ -82,8 +82,8 @@ def find_between( s, first, last ):
         start = s.index( first ) + len( first )
         end = s.index( last, start )
         return s[start:end]
-    except ValueError:
-        return ""
+    except Exception:
+        return None
 
 '''find string between right'''
 def find_between_r( s, first, last ):

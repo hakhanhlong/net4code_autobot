@@ -6,6 +6,8 @@ from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
 import time
 
+import json
+
 from fang.foundation.entitylinked import LinkedList
 
 
@@ -20,7 +22,7 @@ class MegaTemplate(threading.Thread):
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
         self.info_fang = self.buildinfo()
-        self.result_templates = []
+        self.result_templates = {}
 
     def run(self):
         if self.info_fang is not None:
@@ -29,6 +31,7 @@ class MegaTemplate(threading.Thread):
                 self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (fang['device_id'])
                 try:
                     device = self._request.get().json()
+                    self.result_templates[str(fang['device_id'])] = []
                     try:
                         if device['status_code'] == 500:  # device not exist
                             stringhelpers.err( "[%s] MEGA TEMPLATE DEVICE ID %s NOT EXIST" % (self.name),fang['device_id'])
@@ -53,13 +56,23 @@ class MegaTemplate(threading.Thread):
                         log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
                         print("MEGA TEMPLATE \"%s\" FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (self.name, parameters['host'], parameters['port'], parameters['device_type']))
                         session_fang = fac.execute_keep_alive(loginfo=log_output_file_name)
-                        for sub_template in fang['sub_templates']:  # traverse sub template of each device
-                            subtemplate_thread = SubTemplate(sub_template['name'], sub_template, device, session_fang, vendor_os, False)
-                            subtemplate_thread.start()
-                            self.result_templates.append(subtemplate_thread.join())
+
+                        if len(fang['sub_templates']) > 0:
+                            len_size = len(fang['sub_templates'])
+
+                            for x in range(len_size):
+                                sub_template = fang['sub_templates'][x]
+                                subtemplate_thread = SubTemplate(sub_template['name'], sub_template, device,                                                                 session_fang, vendor_os, False, log_output_file_name)
+                                subtemplate_thread.start()
+                                self.result_templates[str(fang['device_id'])].append(subtemplate_thread.join())
+
+                            '''for sub_template in fang['sub_templates']:  # traverse sub template of each device
+                                subtemplate_thread = SubTemplate(sub_template['name'], sub_template, device, session_fang, vendor_os, False, log_output_file_name)
+                                subtemplate_thread.start()
+                                self.result_templates.append(subtemplate_thread.join())'''
 
 
-                        test = self.result_templates
+
 
                         session_fang.remove_file_log(log_output_file_name)
                         # stringhelpers.warn(str(self.action_log))
@@ -67,6 +80,8 @@ class MegaTemplate(threading.Thread):
                         # print(self.result_templates)
                 except:
                     pass
+
+            test = self.result_templates
                 # ---------------------------------------------------------------------------------------------------
 
 
@@ -82,7 +97,8 @@ class MegaTemplate(threading.Thread):
         for k, v in run_devices: # get list device id need fang and role of each device
             #k = deviceid, v = role of device
             device_role_name = v
-            ll_actions = LinkedList() #save actions to double linked list
+            #ll_actions = LinkedList() #save actions to double linked list
+            ll_actions = []
             device_fang = dict(device_id = k, role=device_role_name)
             device_fang['sub_templates'] = []
             key_maps = sorted(self.data_template['map'].keys())
@@ -161,7 +177,7 @@ class MegaTemplate(threading.Thread):
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, device_info=None, session_fang = None, vendor_os = None, is_rollback=False):
+    def __init__(self, name, subtemplate=None, device_info=None, session_fang = None, vendor_os = None, is_rollback=False, file_log=None):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -173,6 +189,7 @@ class SubTemplate(threading.Thread):
         self.array_state_action = []
         self.dict_state_result = {}
         self.is_rollback = is_rollback
+        self.file_log = file_log
 
     def run(self):
         try:
@@ -199,11 +216,19 @@ class SubTemplate(threading.Thread):
                     previous_final_output = []
                     for step in _array_step:
                         #print(_dict_list_actions[step])
-                        _action = _dict_list_actions[step][str(step)]
-                        param_action = _action.get('args', None)
-                        param_rollback_action = _action.get('rollback_args', None)
+                        dict_action = _dict_list_actions[step]
+                        param_action = None
+                        param_rollback_action = None
+                        _action = None
+                        for k, v in dict_action.items():
+                            if k == 'args':
+                                param_action = v
+                            elif k == 'rollback_args':
+                                param_rollback_action = v
+                            else:
+                                _action = v
 
-                        action_id = _action.get('action_id', None)
+                        action_id = _action.get('action_id', 0)
                         if action_id > 0:  # command_id > 0
                             self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
                             try:
@@ -214,10 +239,12 @@ class SubTemplate(threading.Thread):
                                     dependStep = dependency
                                     if (int(_action['condition']) == int(previous_final_output[dependStep - 1])):
 
-                                        thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os, self.session_fang, self.is_rollback)
+                                        thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os,
+                                                               self.session_fang, self.is_rollback, self.file_log)
                                         thread_action.start()
                                         result = thread_action.join()
                                         result['action_id'] = action_id
+
                                         self.array_state_action.append(result)
 
                                         #previous_final_output.append(output_info[str(command_id)]['final_output'])
@@ -229,7 +256,8 @@ class SubTemplate(threading.Thread):
                                         previous_final_output.append(False)
                                         continue
                                 else:  # dependency == 0
-                                    thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os, self.session_fang, self.is_rollback)
+                                    thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os,
+                                                           self.session_fang, self.is_rollback, self.file_log)
                                     thread_action.start()
                                     result = thread_action.join()
                                     result['action_id'] = action_id
@@ -261,7 +289,8 @@ class SubTemplate(threading.Thread):
 ''' --------------------------------- Action ------------------------------------------------------------------------'''
 class Action(threading.Thread):
     """ Thread instance each process mega """
-    def __init__(self, name, data_action = None, dict_action = {}, params_action=None, param_rollback_action=None, vendor_os=None, session_fang=None, is_rolback=False):
+    def __init__(self, name, data_action = None, dict_action = {}, params_action=None, param_rollback_action=None,
+                 vendor_os=None, session_fang=None, is_rolback=False, file_log=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
@@ -271,7 +300,7 @@ class Action(threading.Thread):
         self.data_command = None
         self.action_log = {'result':{'outputs':dict()}}
         self.fang = session_fang
-        self.log_output_file_name = None
+        self.log_output_file_name = file_log
         self.vendor_os = vendor_os
 
         self.params_action = params_action
@@ -283,6 +312,7 @@ class Action(threading.Thread):
         self.dict_state_result = dict()
 
 
+
         # sao the nay
 
 
@@ -290,7 +320,7 @@ class Action(threading.Thread):
         try:
             key_list_command = self.vendor_os
             key_rollback = 'rollback'
-            self.log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
+
             self.action_log['result']['outputs'][key_list_command] = {}
             self.action_log['result']['outputs'][key_list_command]['config'] = []
             self.action_log['result']['outputs'][key_list_command]['rollback'] = []
@@ -348,8 +378,7 @@ class Action(threading.Thread):
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                             else:
                                 stringhelpers.err(
-                                    "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
-                                    step, dependStep, self.name))
+                                    "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
@@ -360,15 +389,18 @@ class Action(threading.Thread):
                             self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
                             stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                             if int(step) > 1:
-                                if int(output_info[str(command_id)]['final_output']) == int(
-                                        _command_running.get('condition', 0)):
+                                if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                     compare_final_output.append(True)
                                 else:
                                     self.action_log['final_output'] = False
                                     compare_final_output = []
                                     break
                     else:  # last command in actions check point
-                        pass
+                        dependency = int(_command_running['dependency'])
+                        if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                            compare_final_output.append(True)
+                        else:
+                            compare_final_output.append(False)
 
                 # -------------- compare final_output for action ----------------------------------------------------
                 try:
@@ -414,8 +446,7 @@ class Action(threading.Thread):
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                             else:
                                 stringhelpers.err(
-                                    "MEGA ACTIONS ROLLBACK STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
-                                        step, dependStep, self.name))
+                                    "MEGA ACTIONS ROLLBACK STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
@@ -426,15 +457,19 @@ class Action(threading.Thread):
                             self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
                             stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                             if int(step) > 1:
-                                if int(output_info[str(command_id)]['final_output']) == int(
-                                        _command_running.get('condition', 0)):
+                                if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                     compare_final_output.append(True)
                                 else:
                                     self.action_log['final_output'] = False
                                     compare_final_output = []
                                     break
                     else:  # last command in actions check point
-                        pass
+                        dependency = int(_command_running['dependency'])
+                        if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                            compare_final_output.append(True)
+                        else:
+                            compare_final_output.append(False)
+
                 stringhelpers.err("MEGA ACTIONS THREAD ROLLBACK FINISHED: | THREAD %s" % (self.name))
 
                 # -------------- compare final_output for action ----------------------------------------------------
@@ -535,7 +570,7 @@ class Action(threading.Thread):
             commands = [command]
             #stringhelpers.info_green(command)
 
-            self.fang.execute_action_command(commands, blanks=2, error_reporting=True, timeout=30, terminal=False)
+            self.fang.execute_template_action_command(commands, blanks=2, error_reporting=True, timeout=30, terminal=False)
             #result_fang = self.fang.get_output()
             result_fang = self.fang.get_action_output(self.log_output_file_name)
 
@@ -561,7 +596,12 @@ class Action(threading.Thread):
         output_result[key]['output'] = []
         try:
             if command_type == 3: # alway using for ironman
-                for output_item in self.data_command['output']:
+                data_command_output = None
+                if type(self.data_command['output']) is not []:
+                    data_command_output = json.loads(self.data_command['output'])
+                else:
+                    data_command_output = self.data_command['output']
+                for output_item in data_command_output:
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
@@ -593,7 +633,9 @@ class Action(threading.Thread):
                         compare = output_item['compare']
                         if end_by == 'end_row':
                             end_by = '\r\n'
-                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
+                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by)
+                        if ((compare_value is not None) and (compare_value is not "")):
+                            compare_value = compare_value.strip()
                         if compare_value is '' or compare_value is None:
                             compare_value = result_fang
                         #if compare_value is not None or compare_value is not '':

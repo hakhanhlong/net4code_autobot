@@ -129,7 +129,11 @@ class MegaAction(threading.Thread):
                                         compare_final_output = []
                                         break
                         else: #last command in actions check point
-                            pass
+                            dependency = int(_command_running['dependency'])
+                            if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                                compare_final_output.append(True)
+                            else:
+                                compare_final_output.append(False)
 
                     #-------------- compare final_output for action ----------------------------------------------------
                     try:
@@ -189,15 +193,18 @@ class MegaAction(threading.Thread):
                                 self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
                                 stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(
-                                            _command_running.get('condition', 0)):
+                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                         compare_final_output.append(True)
                                     else:
                                         self.action_log['final_output'] = False
                                         compare_final_output = []
                                         break
                         else:  # last command in actions check point
-                            pass
+                            dependency = int(_command_running['dependency'])
+                            if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                                compare_final_output.append(True)
+                            else:
+                                compare_final_output.append(False)
                     stringhelpers.err("MEGA ACTIONS THREAD ROLLBACK FINISHED: | THREAD %s" % (self.name))
 
                     # -------------- compare final_output for action ----------------------------------------------------
@@ -363,7 +370,9 @@ class MegaAction(threading.Thread):
                         compare = output_item['compare']
                         if end_by == 'end_row':
                             end_by = '\r\n'
-                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
+                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by)
+                        if compare_value is not None or compare_value is not "":
+                            compare_value = compare_value.strip()
                         if compare_value is '' or compare_value is None:
                             compare_value = result_fang
                         #if compare_value is not None or compare_value is not '':
