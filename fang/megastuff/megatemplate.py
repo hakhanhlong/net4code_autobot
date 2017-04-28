@@ -4,11 +4,7 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
-import time
-
 import json
-
-from fang.foundation.entitylinked import LinkedList
 
 
 
@@ -21,261 +17,238 @@ class MegaTemplate(threading.Thread):
         self.dict_template = dict_template
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
-        self.info_fang = self.buildinfo()
+        self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = {}
 
     def run(self):
         if self.info_fang is not None:
-            for fang in self.info_fang['devices']: # fang sub template to each device
-                # get info device ----------------------------------------------------------------------------------
-                self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (fang['device_id'])
-                try:
-                    device = self._request.get().json()
-                    self.result_templates[str(fang['device_id'])] = []
-                    try:
-                        if device['status_code'] == 500:  # device not exist
-                            stringhelpers.err( "[%s] MEGA TEMPLATE DEVICE ID %s NOT EXIST" % (self.name),fang['device_id'])
-                    except:  # process fang test device by command
-                        host = device['ip_mgmt']
-                        port = int(device['port_mgmt'])
-                        username = device['username']
-                        password = device['password']
-                        device_type = device['os']
-                        method = device['method']  # ssh, telnet
-                        parameters = {
-                            'device_type': device_type,
-                            'host': host,
-                            'protocol': method.lower(),
-                            'username': username,
-                            'password': password,
-                            'port': port,
-                            'timeout': 300
-                        }
-                        vendor_os = "%s|%s" % (device['vendor'], device['os'])
-                        fac = FactoryConnector(**parameters)
-                        log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
-                        print("MEGA TEMPLATE \"%s\" FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (self.name, parameters['host'], parameters['port'], parameters['device_type']))
-                        session_fang = fac.execute_keep_alive(loginfo=log_output_file_name)
-
-                        if len(fang['sub_templates']) > 0:
-                            len_size = len(fang['sub_templates'])
-
-                            for x in range(len_size):
-                                sub_template = fang['sub_templates'][x]
-                                subtemplate_thread = SubTemplate(sub_template['name'], sub_template, device,                                                                 session_fang, vendor_os, False, log_output_file_name)
-                                subtemplate_thread.start()
-                                self.result_templates[str(fang['device_id'])].append(subtemplate_thread.join())
-
-                            '''for sub_template in fang['sub_templates']:  # traverse sub template of each device
-                                subtemplate_thread = SubTemplate(sub_template['name'], sub_template, device, session_fang, vendor_os, False, log_output_file_name)
-                                subtemplate_thread.start()
-                                self.result_templates.append(subtemplate_thread.join())'''
-
-
-
-
-                        session_fang.remove_file_log(log_output_file_name)
-                        # stringhelpers.warn(str(self.action_log))
-                        session_fang.terminal()  # finished fang command
-                        # print(self.result_templates)
-                except:
-                    pass
-
-            test = self.result_templates
+            for fang in self.info_fang['subtemplates']: # fang sub template
+                sub_template_name = fang['sub_template_name']
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False)
+                subtemplate_thread.start()
+                subtemplate_thread.join()
                 # ---------------------------------------------------------------------------------------------------
-
-
-
         else:
             stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
 
-    def buildinfo(self):
-        data_fang = dict(devices=[])
-        key_dict_device = 'devices'
-        #----------------device list------------------------------------------------------------------------------------
+    def buildinfo_subtemplates(self):
+        data_fang = dict(subtemplates=[])
+        # ----------------device list------------------------------------------------------------------------------------
         run_devices = sorted(self.data_template['run_devices'].items(), reverse=False)
-        for k, v in run_devices: # get list device id need fang and role of each device
-            #k = deviceid, v = role of device
-            device_role_name = v
-            #ll_actions = LinkedList() #save actions to double linked list
-            ll_actions = []
-            device_fang = dict(device_id = k, role=device_role_name)
-            device_fang['sub_templates'] = []
-            key_maps = sorted(self.data_template['map'].keys())
-            try:
-                self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_fang['device_id'])
-                device = self._request.get().json()
-                device_fang['device_info'] = dict(
-                    port_mgmt = device['port_mgmt'],
-                    method = device['method'],
-                    vendor = device['vendor'],
-                    os = device['os'],
-                    username = device['username'],
-                    password = device['password'],
-                    ip_mgmt = device['ip_mgmt'],
-                    device_id = device['device_id']
-                )
-                device_fang['vendor_ios'] = "%s|%s" % (device['vendor'],device['os']) # vendor+os = e.x: Cisco|ios-xr
+        key_maps = sorted(self.data_template['map'].keys()) #key number sub template
 
-                for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
-                    _v = self.data_template['map'][_k]
-                    role_exist = _v.get(device_role_name, None)
+        for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
+            sub_template_number = _k
+            subtemplate = dict(devices=[])
+            dict_map_template = self.data_template['map'][sub_template_number]
+            subtemplate_data = self.data_template['sub_templates'][int(sub_template_number)] #data are list action
 
-                    if role_exist is not None:  # compare role of device == role of template
-                        item_template = dict()
-                        item_template['name'] = self.data_template['nameMap'][_k]
-                        count_step = 0
-                        for action in self.data_template['sub_templates'][int(_k)]:  # list actions
+            for k, v in run_devices:  # get list device id need fang and role of each device
+                # k = deviceid, v = role of device
+                device_role_name = v
+                role_exist =  dict_map_template.get(device_role_name, None)
+                count_step = 0
+                if role_exist: # compare role of device == role of template
+                    info_fang = {} #clear each add info
+                    subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
+
+
+                    try:
+                        device_fang = dict(device_id=k, role=device_role_name)
+                        device_id = device_fang['device_id']
+                        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
+                        device = self._request.get().json()
+                        device_fang['device_info'] = dict(
+                            port_mgmt=device['port_mgmt'],
+                            method=device['method'],
+                            vendor=device['vendor'],
+                            os=device['os'],
+                            username=device['username'],
+                            password=device['password'],
+                            ip_mgmt=device['ip_mgmt'],
+                            device_id=device['device_id']
+                        )
+                        device_fang['vendor_ios'] = "%s|%s" % (device['vendor'], device['os'])  # vendor+os = e.x: Cisco|ios-xr
+                        info_fang['device'] = device_fang
+
+                        dict_action = dict()
+                        #-----------------action in each template ----------------------------------------------------------
+                        for action in subtemplate_data:  # list actions
                             count_step = count_step + 1  # step
-                            dict_action = dict()
                             dict_action[str(count_step)] = action
 
-                            #process argument for action ---------------------------------------------------------------
-                            dict_argument = self.data_template['run_args'].get(_k, None) #level get by number template
+                            # process argument for action ---------------------------------------------------------------
+                            dict_argument = self.data_template['run_args'].get(sub_template_number,None)  # level get by number template
                             if dict_argument is not None:
-                                dict_argument = dict_argument.get(device_role_name, None) # level get by role
+                                dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
 
                                     action_id = action.get('action_id', 0)
                                     dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
                                     if dict_argument is not None:
-                                        dict_argument = dict_argument.get(device_fang['vendor_ios'], None) # level get by vendor+ios
-                                        if dict_argument is not None:
-                                            dict_action['args'] = dict_argument
+                                        dict_action['args'] = dict_argument
 
-                            #-------------------------------------------------------------------------------------------
+                            # -------------------------------------------------------------------------------------------
                             # process rollback argument for action ---------------------------------------------------------------
-                            dict_argument = self.data_template['rollback_args'].get(_k, None)  # level get by number template
+                            dict_argument = self.data_template['rollback_args'].get(sub_template_number,None)  # level get by number template
                             if dict_argument is not None:
-                                dict_argument = dict_argument.get(device_role_name, None)  # level get by role
+                                dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
                                     action_id = action.get('action_id', 0)
-                                    dict_argument = dict_argument.get(str(action_id),None)  # level get by action_id
+                                    dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
                                     if dict_argument is not None:
-                                        dict_argument = dict_argument.get(device_fang['vendor_ios'], None)  # level get by vendor+ios
-                                        if dict_argument is not None:
-                                            dict_action['rollback_args'] = dict_argument
+                                        dict_action['rollback_args'] = dict_argument
 
-                                            # -------------------------------------------------------------------------------------------
-
-
-
-                            ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
-
-                        item_template['actions'] = ll_actions
-                        device_fang['sub_templates'].append(item_template)
-
-                data_fang[key_dict_device].append(device_fang)
-
-            except Exception as error:
-                stringhelpers.err("MEGA TEMPLATE BUILD DATA ERROR %s\n\r" % (error))
-                return None
+                            #ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
+                        info_fang['actions'] = dict_action
+                        subtemplate['devices'].append(info_fang)
+                    except Exception as _error:
+                        stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
+            if info_fang is not None:
+                data_fang['subtemplates'].append(subtemplate)
 
 
         return data_fang
 
-
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, device_info=None, session_fang = None, vendor_os = None, is_rollback=False, file_log=None):
+    def __init__(self, name, subtemplate=None, is_rollback=False):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
-        self.device_info = device_info
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
-        self.session_fang = session_fang
-        self.vendor_os = vendor_os
         self.array_state_action = []
         self.dict_state_result = {}
         self.is_rollback = is_rollback
-        self.file_log = file_log
+        self.is_check_run_finished = False
+
+
+    def excecute(self, data_fang):
+        actions = sorted(data_fang['actions'].items(), reverse=False)  # get actions of each sub template # action contain linkedlist
+        #--------------------- build info device fang -----------------------------------------------------------
+        device = data_fang['device']['device_info']
+        vendor_ios = data_fang['device']['vendor_ios']
+        host = device['ip_mgmt']
+        port = int(device['port_mgmt'])
+        username = device['username']
+        password = device['password']
+        device_type = device['os']
+        method = device['method']  # ssh, telnet
+        parameters = {
+            'device_type': device_type,
+            'host': host,
+            'protocol': method.lower(),
+            'username': username,
+            'password': password,
+            'port': port,
+            'timeout': 300
+        }
+        print("MEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (parameters['host'], parameters['port'], parameters['device_type']))
+        fac = FactoryConnector(**parameters)
+        log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
+        fac = fac.execute_keep_alive(loginfo=log_output_file_name)
+        #-------------------------------------------------------------------------------------------------------
+
+        # --------------- list dict action command --------------------------------------------------------------
+        _dict_list_actions = dict()
+        # _dict_list_action params = self.data_action['test_args']
+        _array_step = []
+        param_action = None
+        param_rollback_action = None
+        if len(actions) > 0:
+            for step, action in actions:
+                if str(step) != 'args' and (step) != 'rollback_args':
+                    _dict_list_actions[str(step)] = action
+                    _array_step.append(str(step))  # save step action
+                else:
+                    if str(step) == 'args':
+                        param_action = action
+                    else:
+                        param_rollback_action = action #rollback_args
+        else:
+            pass
+        # -------------------------------------------------------------------------------------------------------
+        if len(_array_step) > 0 and self.is_rollback == False:
+            compare_final_output = []
+            previous_final_output = []
+            for step  in _array_step:
+                # print(_dict_list_actions[step])
+                _action = _dict_list_actions[str(step)]
+
+
+                action_id = _action.get('action_id', 0)
+                if action_id > 0:  # command_id > 0
+                    self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
+                    try:
+                        thread_action_name = "Thread-Action_%s-In-%s" % (action_id, self.name)
+                        action_data = self._request.get().json()
+                        dependency = int(_action['dependency'])
+                        if dependency > 0:  # run need compare
+                            dependStep = dependency
+                            if (int(_action['condition']) == int(previous_final_output[dependStep - 1])):
+
+                                thread_action = Action(thread_action_name, action_data, None, param_action,
+                                                       param_rollback_action, vendor_ios,
+                                                       fac, self.is_rollback, log_output_file_name)
+                                thread_action.start()
+
+
+                                result = thread_action.join()
+                                result['action_id'] = action_id
+                                self.array_state_action.append(result)
+
+
+                            else:
+                                stringhelpers.err(
+                                    "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
+                                    step, dependStep, self.name))
+                                previous_final_output.append(False)
+                                continue
+                        else:  # dependency == 0
+                            thread_action = Action(thread_action_name, action_data, None, param_action,
+                                                   param_rollback_action, vendor_ios,
+                                                   fac, self.is_rollback, log_output_file_name)
+                            thread_action.start()
+                            result = thread_action.join()
+                            result['action_id'] = action_id
+                            self.array_state_action.append(result)
+
+                            if int(step) > 1:
+                                if int(result['final_result_action']) == int(_action.get('condition', 0)):
+                                    self.dict_state_result["final_sub_template"] = True
+                                else:
+                                    self.dict_state_result["final_sub_template"] = False
+                                    compare_final_output = []
+                                    break
+                    except:
+                        stringhelpers.warn(
+                            "[%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
+                else:  # last command in actions check point
+                    pass
+
+                self.dict_state_result["state_actions"] = self.array_state_action
+
+            fac.remove_file_log(log_output_file_name)
+            # stringhelpers.warn(str(self.action_log))
+            fac.terminal()  # finished fang command
+            self.is_check_run_finished = True
 
     def run(self):
         try:
             if self.subtemplate is not None:
                 stringhelpers.info("[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
-                actions = self.subtemplate['actions']  # get actions of each sub template # action contain linkedlist
-
-                #print(actions[0])
-                # --------------- list dict action command --------------------------------------------------------------
-                _dict_list_actions = dict()
-                #_dict_list_action params = self.data_action['test_args']
-                _array_step = []
-                if len(actions) > 0:
-                    count = 0
-                    for _action in actions:
-                        count = count + 1
-                        _dict_list_actions[str(count)] = _action
-                        _array_step.append(str(count))  # save step action
-                else:
-                    pass
-                # -------------------------------------------------------------------------------------------------------
-                if len(_array_step) > 0 and self.is_rollback == False:
-                    compare_final_output = []
-                    previous_final_output = []
-                    for step in _array_step:
-                        #print(_dict_list_actions[step])
-                        dict_action = _dict_list_actions[step]
-                        param_action = None
-                        param_rollback_action = None
-                        _action = None
-                        for k, v in dict_action.items():
-                            if k == 'args':
-                                param_action = v
-                            elif k == 'rollback_args':
-                                param_rollback_action = v
-                            else:
-                                _action = v
-
-                        action_id = _action.get('action_id', 0)
-                        if action_id > 0:  # command_id > 0
-                            self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
-                            try:
-                                thread_action_name = "Thread-Action_%s-In-%s" % (action_id, self.name)
-                                action_data = self._request.get().json()
-                                dependency = int(_action['dependency'])
-                                if dependency > 0:  # run need compare
-                                    dependStep = dependency
-                                    if (int(_action['condition']) == int(previous_final_output[dependStep - 1])):
-
-                                        thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os,
-                                                               self.session_fang, self.is_rollback, self.file_log)
-                                        thread_action.start()
-                                        result = thread_action.join()
-                                        result['action_id'] = action_id
-
-                                        self.array_state_action.append(result)
-
-                                        #previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                        #self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                        #stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
-                                    else:
-                                        stringhelpers.err("MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
-                                        previous_final_output.append(False)
-                                        continue
-                                else:  # dependency == 0
-                                    thread_action = Action(thread_action_name, action_data, None, param_action, param_rollback_action, self.vendor_os,
-                                                           self.session_fang, self.is_rollback, self.file_log)
-                                    thread_action.start()
-                                    result = thread_action.join()
-                                    result['action_id'] = action_id
-                                    self.array_state_action.append(result)
-
-                                    if int(step) > 1:
-                                        if int(result['final_result_action']) == int(_action.get('condition', 0)):
-                                            self.dict_state_result["final_sub_template"] = True
-                                        else:
-                                            self.dict_state_result["final_sub_template"] = False
-                                            compare_final_output = []
-                                            break
-                            except:
-                                stringhelpers.warn("[%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
-                        else:  # last command in actions check point
-                            pass
-
-                        self.dict_state_result["state_actions"] = self.array_state_action
+                for device in self.subtemplate['devices']:
+                    _thread = threading.Thread(target=self.excecute, args=(device, ))
+                    _thread.start()
+                    #_thread.join()
+                    #self.excecute(device)
+                while self.is_check_run_finished == False:
+                    try:
+                        if self.dict_state_result["state_actions"] is not None:
+                            break
+                    except:
+                        pass
 
 
         except Exception as exError:
