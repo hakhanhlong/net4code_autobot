@@ -62,17 +62,22 @@ class BaseHandler:
                 print("Connect error at '{}'.\n".format(self.host))
                 print(self.session.before)
                 sys.exit()
+                return False
 
         if index == 0:
             self.session.sendline(self.username)
             index = self.session.expect_list(prompt, timeout=timeout)
             if index != 1:
                 self.auth_failed('login failed.')
+                return False
         if index == 1:
             self.session.sendline(self.password)
             index = self.session.expect_list(prompt, timeout=timeout)
             if index != 2:
                 self.auth_failed('login failed.')
+                return False
+
+        return True
 
     def logout(self):
         self.session.sendline('exit')
@@ -80,6 +85,9 @@ class BaseHandler:
             self.session.sendline('exit')
         self.session.expect(pexpect.EOF)
         self.session.close()
+
+    def is_alive(self):
+        return self.session.isalive()
 
     def log(self, logfile=''):
         #if logfile:

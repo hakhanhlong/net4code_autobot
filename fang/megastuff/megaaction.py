@@ -4,6 +4,7 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
+import json
 
 
 class MegaAction(threading.Thread):
@@ -338,7 +339,11 @@ class MegaAction(threading.Thread):
         output_result[key]['output'] = []
         try:
             if command_type == 3: # alway using for ironman
-                for output_item in self.data_command['output']:
+                if isinstance(self.data_command['output'], str):
+                    data_command_output = json.loads(self.data_command['output'])
+                else:
+                    data_command_output = self.data_command['output']
+                for output_item in data_command_output:
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
@@ -361,7 +366,11 @@ class MegaAction(threading.Thread):
                         output_result[key]['final_output'] = True
                 return output_result
             elif command_type == 2 or command_type == 1:
-                for output_item in self.data_command['output']:
+                if isinstance(self.data_command['output'], str):
+                    data_command_output = json.loads(self.data_command['output'])
+                else:
+                    data_command_output = self.data_command['output']
+                for output_item in data_command_output:
                     #if output_item['start_by'] is not '' and output_item['end_by'] is not '':
                     try:
                         start_by = output_item['start_by']
@@ -400,6 +409,7 @@ class MegaAction(threading.Thread):
                         output_result[key]['output'].append(result)
                         output_result[key]['parsing_status'] = 'ERROR'
                         stringhelpers.err(_strError)
+                        final_result_output.append(False)
 
 
                 # determine operator for final output

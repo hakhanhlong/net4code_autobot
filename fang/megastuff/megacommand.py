@@ -3,6 +3,7 @@ from ultils import stringhelpers
 from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
+import json
 
 class MegaCommand(threading.Thread):
     """ Thread instance each process mega """
@@ -131,7 +132,11 @@ class MegaCommand(threading.Thread):
         try:
             if command_type == 3: # alway using for ironman
                 output_result = []
-                for output_item in self.data_command['output']:
+                if isinstance(self.data_command['output'], str):
+                    data_command_output = json.loads(self.data_command['output'])
+                else:
+                    data_command_output = self.data_command['output']
+                for output_item in data_command_output:
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
@@ -148,7 +153,11 @@ class MegaCommand(threading.Thread):
                 return cmd_log
             elif command_type == 2 or command_type == 1:
                 output_result = []
-                for output_item in self.data_command['output']:
+                if isinstance(self.data_command['output'], str):
+                    data_command_output = json.loads(self.data_command['output'])
+                else:
+                    data_command_output = self.data_command['output']
+                for output_item in data_command_output:
                     if output_item['start_by'] is not '' and output_item['end_by'] is not '':
                         try:
                             start_by = output_item['start_by']
@@ -171,6 +180,7 @@ class MegaCommand(threading.Thread):
                             stringhelpers.err(_strError)
                             output_result.append({'value': compare_value, 'compare': retvalue_compare, 'error': _strError})
                             cmd_log['parsing_status'] = 'ERROR'
+                            final_result_output.append(False)
 
 
                 # determine operator for final output
