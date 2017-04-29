@@ -130,11 +130,15 @@ class MegaAction(threading.Thread):
                                         compare_final_output = []
                                         break
                         else: #last command in actions check point
-                            dependency = int(_command_running['dependency'])
-                            if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
-                                compare_final_output.append(True)
-                            else:
-                                compare_final_output.append(False)
+                            try:
+                                dependency = int(_command_running['dependency'])
+                                if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                                    compare_final_output.append(True)
+                                else:
+                                    compare_final_output.append(False)
+                            except:
+                                pass
+
 
                     #-------------- compare final_output for action ----------------------------------------------------
                     try:

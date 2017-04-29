@@ -2,6 +2,7 @@ from network_adapter.ios_handler import IOSHandler
 from network_adapter.ios_xr_handler import IOSXRHandler
 from network_adapter.junos_handler import JunosHandler
 import sys
+from ultils import stringhelpers
 
 class FactoryConnector:
     ''' Factory connector management'''
@@ -13,8 +14,9 @@ class FactoryConnector:
         self.password = password
         self.port = port,
         self.timeout = timeout
+        self.file_log_command = "%s.log" % (stringhelpers.generate_random_keystring(10))
 
-    def execute(self, commands=[], loginfo='longhk'):
+    def execute(self, commands=[]):
 
         parameters = {
             'host': self.host,
@@ -27,7 +29,7 @@ class FactoryConnector:
         if 'ios' == self.device_type:
             ios = IOSHandler(**parameters)
             ios.login()
-            ios.log_standard(loginfo)
+            ios.log(self.file_log_command)
             ios.execute_command(commands, blanks = 2, error_reporting = True)
             #result = ios.get_output()
             #ios.logout()
@@ -35,7 +37,7 @@ class FactoryConnector:
         if 'ios-xr' == self.device_type:
             ios = IOSXRHandler(**parameters)
             ios.login()
-            ios.log_standard(loginfo)
+            ios.log(self.file_log_command)
             #ios.read_result()
             ios.execute_command(commands, blanks = 2, error_reporting = True)
             #result = ios.get_output()
@@ -44,7 +46,7 @@ class FactoryConnector:
         elif 'junos' == self.device_type:
             junos = JunosHandler(**parameters)
             junos.login()
-            junos.log_standard(loginfo)
+            junos.log(self.file_log_command)
             junos.execute_command(commands, blanks=2, error_reporting=True)
             #junos.execute_command(commands, blanks=2, error_reporting=False)
             #result = junos.get_output()

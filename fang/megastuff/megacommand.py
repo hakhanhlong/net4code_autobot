@@ -4,6 +4,7 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 import json
+from . import func_compare
 
 class MegaCommand(threading.Thread):
     """ Thread instance each process mega """
@@ -56,6 +57,7 @@ class MegaCommand(threading.Thread):
                 print("FANG DEVICE: host=%s, port=%s, devicetype=%s \n\n" % (host, device['port_mgmt'], device_type))
                 fang = fac.execute(commands)
                 result_fang = fang.get_output()
+                fang.remove_file_log(fac.file_log_command) #remove file.log
 
                 _request.url = self.requestURL.MEGA_URL_COMMANDLOG_GETBY_COMMANDID % (self.data_command['command_id'])
                 command_log = _request.get().json()
@@ -170,8 +172,8 @@ class MegaCommand(threading.Thread):
                             if compare_value is not None or compare_value is not '':
                                 if compare != "contains":
                                     compare_value = int(compare_value)
-                                    standard_value = int()
-                                retvalue_compare = self.func_compare(compare, standard_value, compare_value)
+                                    standard_value = int(standard_value)
+                                retvalue_compare = func_compare(compare, standard_value, compare_value)
                                 output_result.append({'value': compare_value, 'compare': retvalue_compare})
                                 # save final result of each output
                                 final_result_output.append(retvalue_compare)
@@ -197,7 +199,7 @@ class MegaCommand(threading.Thread):
                     if number_operator == 0:
                         first_value = x
                     else:
-                        first_value = self.func_compare(final_operator[number_operator-1], first_value, x)
+                        first_value = func_compare(final_operator[number_operator-1], first_value, x)
                     number_operator = number_operator + 1
 
                     if number_operator == len(final_result_output):
