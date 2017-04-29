@@ -93,13 +93,13 @@ class MegaTemplate(threading.Thread):
                             if dict_argument is not None:
                                 dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
-
-                                    action_id = action.get('action_id', 0)
+                                    dict_action['args'].append(dict_argument)
+                                    '''action_id = action.get('action_id', 0)
                                     if action_id == 5:
                                         test = ""
                                     dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
                                     if dict_argument is not None:
-                                        dict_action['args'].append(dict_argument) #cho nay can phai la list argument
+                                        dict_action['args'].append(dict_argument) #cho nay can phai la list argument'''
 
                             # -------------------------------------------------------------------------------------------
                             # process rollback argument for action ---------------------------------------------------------------
@@ -108,10 +108,11 @@ class MegaTemplate(threading.Thread):
                             if dict_argument is not None:
                                 dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
-                                    action_id = action.get('action_id', 0)
+                                    dict_action['rollback_args'].append(dict_argument)  # cho nay can phai la list argument
+                                    '''action_id = action.get('action_id', 0)
                                     dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
                                     if dict_argument is not None:
-                                        dict_action['rollback_args'].append(dict_argument) #cho nay can phai la list argument
+                                        dict_action['rollback_args'].append(dict_argument) #cho nay can phai la list argument'''
 
                             #ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
                         info_fang['actions'] = dict_action
@@ -379,7 +380,6 @@ class Action(threading.Thread):
             else:
                 pass
                 # -------------------------------------------------------------------------------------------------------
-
 
             '''#############################process command by dependency########################################'''
             if len(_array_step) > 0 and self.is_rollback == False:
