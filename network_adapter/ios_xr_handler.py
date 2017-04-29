@@ -119,7 +119,7 @@ class IOSXRHandler(BaseHandler):
                     index = self.session.expect_list(prompt, timeout=timeout)
                     if index == 0:
                         if blanks > 0: self.blank_lines(blanks)
-            elif index == 4:  # xu ly more
+            elif index == 4 or index == 5:  # xu ly more
                 self.session.sendline(' ')
                 while 1:
                     time.sleep(0.2)

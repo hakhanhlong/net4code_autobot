@@ -40,7 +40,7 @@ class MegaManager(threading.Thread):
                             dict_command[key_command] = key_command
                             mega_command = MegaCommand("Thread-Command-%d" % (x['command_id']), x, dict_command)
                             mega_command.start()
-                time.sleep(3)
+                time.sleep(3)'''
                 #-------------------------------------------------------------------------------------------------------
 
                 #-------------- MEGA RUN ACTION TEST -------------------------------------------------------------------
@@ -55,11 +55,11 @@ class MegaManager(threading.Thread):
                             dict_action[key_action] = key_action
                             mega_action = MegaAction("Thread-Action-%d" % (x['action_id']), x, dict_action)
                             mega_action.start()
-                time.sleep(3)'''
+                time.sleep(1000)
                 #---------------------------------------------------------------------------------------------------------
 
                 # -------------- MEGA RUN TEMPLATE TEST -------------------------------------------------------------------
-                _request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
+                '''_request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
                 _list_templates = _request.get().json()
                 #_list_templates = [_request.get().json()]
                 if len(_list_templates) > 0:
@@ -73,7 +73,7 @@ class MegaManager(threading.Thread):
                             mega_template.start()
                     pass
                 # ---------------------------------------------------------------------------------------------------------
-                time.sleep(1000)
+                time.sleep(1000)'''
 
             except Exception as e:
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))

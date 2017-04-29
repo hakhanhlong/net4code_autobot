@@ -201,11 +201,16 @@ class MegaAction(threading.Thread):
                                         compare_final_output = []
                                         break
                         else:  # last command in actions check point
-                            dependency = int(_command_running['dependency'])
-                            if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
-                                compare_final_output.append(True)
-                            else:
-                                compare_final_output.append(False)
+                            try: #catch error not command rollback
+                                dependency = int(_command_running['dependency'])
+                                if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
+                                    compare_final_output.append(True)
+                                else:
+                                    compare_final_output.append(False)
+                            except:
+                                print("DO NOT COMMAND ROLLBACK\n")
+
+
                     stringhelpers.err("MEGA ACTIONS THREAD ROLLBACK FINISHED: | THREAD %s" % (self.name))
 
                     # -------------- compare final_output for action ----------------------------------------------------

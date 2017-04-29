@@ -286,15 +286,24 @@ class SubTemplate(threading.Thread):
             if self.subtemplate is not None:
                 threading_array = []
                 stringhelpers.info("[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
-                for device in self.subtemplate['devices']:
-                    _thread = threading.Thread(target=self.excecute, args=(device, ))
-                    _thread.start()
-                    threading_array.append(_thread)
-                    #_thread.join()
-                    #self.excecute(device)
 
-                for x in threading_array:
-                    x.join()
+
+                #------------------ chay ko song song ------------------------------------------------------------------
+                for device in self.subtemplate['devices']:
+                    self.excecute(device)
+
+                #-------------------------------------------------------------------------------------------------------
+
+                #------------------- chayj song song -------------------------------------------------------------------
+                #for device in self.subtemplate['devices']:
+                #    _thread = threading.Thread(target=self.excecute, args=(device, ))
+                #    _thread.start()
+                #    threading_array.append(_thread)
+                #    #_thread.join()
+                #    #self.excecute(device)
+                #for x in threading_array:
+                #    x.join()
+                #-------------------------------------------------------------------------------------------------------
 
 
         except Exception as exError:
