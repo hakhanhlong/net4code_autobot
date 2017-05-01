@@ -104,34 +104,42 @@ class MegaAction(threading.Thread):
                             if dependency > 0: # run need compare
                                 dependStep = dependency
                                 if(int(_command_running['condition']) == int(previous_final_output[dependStep-1])):
-
                                     output_info = self.process_each_command(command_id, _dict_list_params)
-
-                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                    self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                    stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                        self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
+                                        stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                    else:
+                                        previous_final_output.append(False)
                                 else:
                                     stringhelpers.err("MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
                                     previous_final_output.append(False)
                                     continue
                             else: # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params)
+                                if output_info is not None:
+                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
-                                    else:
+                                    self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
+                                    stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                    if int(step) > 1:
+                                        if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
+                                            compare_final_output.append(True)
+                                        else:
+                                            self.action_log['final_output'] = False
+                                            compare_final_output = []
+                                            break
+                                else:
+                                    previous_final_output.append(False)
+                                    if int(step) > 1:
                                         self.action_log['final_output'] = False
                                         compare_final_output = []
                                         break
                         else: #last command in actions check point
                             try:
                                 dependency = int(_command_running['dependency'])
+                                if dependency > 0 and int(step) > 0:
+                                    continue
                                 if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
                                     compare_final_output.append(True)
                                 else:
@@ -151,8 +159,13 @@ class MegaAction(threading.Thread):
                                 else:
                                     first_value = func_compare('=', first_value, x)
                                 count = count + 1
-
                             self.action_log['final_output'] = first_value
+                        else:
+                            if len(previous_final_output) > 0:
+                                for x in previous_final_output:
+                                    self.dict_state_result['final_result_action'] = x
+                            else:
+                                self.dict_state_result['final_result_action'] = False
 
                     except Exception as ex:
                         stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
@@ -179,11 +192,13 @@ class MegaAction(threading.Thread):
                                 dependStep = dependency
                                 if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
                                     output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                        self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
+                                        stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                    else:
+                                        previous_final_output.append(False)
 
-                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-                                    stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
                                 else:
                                     stringhelpers.err(
                                         "MEGA ACTIONS ROLLBACK STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
@@ -192,21 +207,29 @@ class MegaAction(threading.Thread):
                                     continue
                             else:  # dependency == 0
                                 output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                if output_info is not None:
+                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-                                stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
-                                    else:
+                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
+                                    stringhelpers.info("\nstep %s: %s" % (step, str(output_info)))
+                                    if int(step) > 1:
+                                        if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
+                                            compare_final_output.append(True)
+                                        else:
+                                            self.action_log['final_output'] = False
+                                            compare_final_output = []
+                                            break
+                                else:
+                                    previous_final_output.append(False)
+                                    if int(step) > 1:
                                         self.action_log['final_output'] = False
                                         compare_final_output = []
                                         break
                         else:  # last command in actions check point
                             try: #catch error not command rollback
                                 dependency = int(_command_running['dependency'])
+                                if dependency > 0 and int(step) > 0:
+                                    continue
                                 if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
                                     compare_final_output.append(True)
                                 else:

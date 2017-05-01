@@ -22,24 +22,36 @@ class MegaTemplate(threading.Thread):
 
     def run(self):
         if self.info_fang is not None:
+            #-----------------------------------------------------------------------------------------------------------
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
-                subtemplate_thread = SubTemplate(sub_template_name, fang, False)
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates)
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang)
-
-                if len(dict_template['state']) <=0 :
-                    stringhelpers.err("ERROR DO NOT RUN TEMPLATE %s \n\r" % (self.name))
-                    dict_template = None
-                    break
                 self.result_templates.append(dict_template)
-                # ---------------------------------------------------------------------------------------------------
+            # ----------------------------------------------------------------------------------------------------------
+
+            #------------------------------- rollback ------------------------------------------------------------------
+            self.info_rollback = self.buildinfo_rollback()
+            if len(self.info_rollback) > 0:
+                self.result_templates = []
+                for fang in self.info_rollback:  # fang sub template
+                    sub_template_name = fang['sub_template_name']
+                    subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates)
+                    subtemplate_thread.start()
+                    dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang)
+                    self.result_templates.append(dict_template)
+
+
+
+            #-----------------------------------------------------------------------------------------------------------
+
         else:
             stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
 
-        test = self.result_templates
+        #test = self.result_templates
 
-        sdasd = ""
+        #sdasd = ""
 
     def buildinfo_subtemplates(self):
         data_fang = dict(subtemplates=[])
@@ -86,33 +98,19 @@ class MegaTemplate(threading.Thread):
                         for action in subtemplate_data:  # list actions
                             count_step = count_step + 1  # step
                             dict_action[str(count_step)] = action
-
-
                             # process argument for action ---------------------------------------------------------------
                             dict_argument = self.data_template['run_args'].get(sub_template_number,None)  # level get by number template
                             if dict_argument is not None:
                                 dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
                                     dict_action['args'].append(dict_argument)
-                                    '''action_id = action.get('action_id', 0)
-                                    if action_id == 5:
-                                        test = ""
-                                    dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
-                                    if dict_argument is not None:
-                                        dict_action['args'].append(dict_argument) #cho nay can phai la list argument'''
-
                             # -------------------------------------------------------------------------------------------
                             # process rollback argument for action ---------------------------------------------------------------
-
                             dict_argument = self.data_template['rollback_args'].get(sub_template_number,None)  # level get by number template
                             if dict_argument is not None:
                                 dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
                                 if dict_argument is not None:
                                     dict_action['rollback_args'].append(dict_argument)  # cho nay can phai la list argument
-                                    '''action_id = action.get('action_id', 0)
-                                    dict_argument = dict_argument.get(str(action_id), None)  # level get by action_id
-                                    if dict_argument is not None:
-                                        dict_action['rollback_args'].append(dict_argument) #cho nay can phai la list argument'''
 
                             #ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
                         info_fang['actions'] = dict_action
@@ -125,9 +123,39 @@ class MegaTemplate(threading.Thread):
 
         return data_fang
 
+    def buildinfo_rollback(self):
+        array_data_rollback = []
+        array_keep_device_rollback = []
+        if len(self.result_templates) > 0:
+            reversed_result = self.result_templates[::-1]
+            for item in reversed_result:
+                dict_template_rollback = dict(devices=[])
+                for k, v in (item['state']).items():
+                    device_id = k
+                    if len(array_keep_device_rollback) > 0:
+                        if device_id in array_keep_device_rollback:
+                            dict_template_rollback['sub_template_name'] = item['sub_template_name']
+                            for device in item['fang']['devices']:
+                                deviceid_compare = device['device']['device_id']
+                                if int(device_id) == int(deviceid_compare):
+                                    dict_template_rollback['devices'].append(device)
+                    if v['final_sub_template'] == False:
+                        stringhelpers.info("RUN ROLLBACK - device id: %s, sub_template_name %s" % (
+                        device_id, item['sub_template_name'] + "\n\n"))
+                        dict_template_rollback['sub_template_name'] = item['sub_template_name']
+
+                        for device in item['fang']['devices']:
+                            deviceid_compare = device['device']['device_id']
+                            if int(device_id) == int(deviceid_compare):
+                                dict_template_rollback['devices'].append(device)
+                        array_keep_device_rollback.append(device_id)
+                array_data_rollback.append(dict_template_rollback)
+        return array_data_rollback
+
+
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -137,6 +165,7 @@ class SubTemplate(threading.Thread):
         self.dict_state_result = {}
         self.is_rollback = is_rollback
         self.is_check_run_finished = False
+        self.result_templates = result_templates
 
 
     def excecute(self, data_fang):
@@ -144,6 +173,7 @@ class SubTemplate(threading.Thread):
         actions = sorted(data_fang['actions'].items(), reverse=False)  # get actions of each sub template # action contain linkedlist
         #--------------------- build info device fang -----------------------------------------------------------
         device = data_fang['device']['device_info']
+        self.dict_state_result[str(device['device_id'])] = {}
         vendor_ios = data_fang['device']['vendor_ios']
         host = device['ip_mgmt']
         port = int(device['port_mgmt'])
@@ -188,7 +218,7 @@ class SubTemplate(threading.Thread):
         else:
             pass
         # -------------------------------------------------------------------------------------------------------
-        if len(_array_step) > 0 and self.is_rollback == False:
+        if len(_array_step) > 0:# and self.is_rollback == False:
             compare_final_output = []
             previous_final_output = []
             for step  in _array_step:
@@ -243,9 +273,9 @@ class SubTemplate(threading.Thread):
 
                             if int(step) > 1:
                                 if int(result['final_result_action']) == int(_action.get('condition', 0)):
-                                    self.dict_state_result["final_sub_template"] = True
+                                    self.dict_state_result[str(device['device_id'])]["final_sub_template"] = True
                                 else:
-                                    self.dict_state_result["final_sub_template"] = False
+                                    self.dict_state_result[str(device['device_id'])]["final_sub_template"] = False
                                     compare_final_output = []
                                     break
                     except:
@@ -265,21 +295,21 @@ class SubTemplate(threading.Thread):
             if len(previous_final_output) > 0:
                 for x in previous_final_output:
                     if x:
-                        self.dict_state_result["final_sub_template"] = True
-                        self.dict_state_result["state_actions"] = self.array_state_action
+                        self.dict_state_result[str(device['device_id'])]["final_sub_template"] = True
+                        self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
                     else:
-                        self.dict_state_result["final_sub_template"] = False
-                        self.dict_state_result["state_actions"] = self.array_state_action
+                        self.dict_state_result[str(device['device_id'])]["final_sub_template"] = False
+                        self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
             else:
-                self.dict_state_result["final_sub_template"] = False
-                self.dict_state_result["state_actions"] = self.array_state_action
+                self.dict_state_result[str(device['device_id'])]["final_sub_template"] = False
+                self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
             #-----------------------------------------------------------------------------------------------------------
 
-
+            self.array_state_action = []
             fac.remove_file_log(log_output_file_name)
             # stringhelpers.warn(str(self.action_log))
             fac.terminal()  # finished fang command
-            self.is_check_run_finished = True
+
 
 
     def run(self):
@@ -288,14 +318,27 @@ class SubTemplate(threading.Thread):
                 threading_array = []
                 stringhelpers.info("[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
 
-
                 #------------------ chay ko song song ------------------------------------------------------------------
                 for device in self.subtemplate['devices']:
-                    self.excecute(device)
+                    #-------------- check has run next subtemplate belong previous result subtemplate
+                    if len(self.result_templates) > 0:
+                        before_result = self.result_templates[len(self.result_templates)-1]
+                        device_id = device['device']['device_info']['device_id']
+                        try:
+                            final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
+                            if final_sub_template == False:
+                                print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                                continue
+                        except:
+                            print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                            continue
 
+                    #--------------------------------------------------------------------------------
+
+                    self.excecute(device)
                 #-------------------------------------------------------------------------------------------------------
 
-                #------------------- chayj song song -------------------------------------------------------------------
+                #------------------- chay song song --------------------------------------------------------------------
                 #for device in self.subtemplate['devices']:
                 #    _thread = threading.Thread(target=self.excecute, args=(device, ))
                 #    _thread.start()
@@ -399,7 +442,7 @@ class Action(threading.Thread):
                                 if output_info is not None:
                                     previous_final_output.append(output_info[str(command_id)]['final_output'])
                                     self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                    stringhelpers.info("Action: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                    stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
                                 else:
                                     previous_final_output.append(False)
                             else:
@@ -412,7 +455,7 @@ class Action(threading.Thread):
                             if output_info is not None:
                                 previous_final_output.append(output_info[str(command_id)]['final_output'])
                                 self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                stringhelpers.info("Action: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
                                 if int(step) > 1:
                                     if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                         compare_final_output.append(True)
@@ -429,6 +472,8 @@ class Action(threading.Thread):
                     else:  # last command in actions check point
                         try:
                             dependency = int(_command_running['dependency'])
+                            if dependency > 0 and int(step) > 0:
+                                continue
                             if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
                                 compare_final_output.append(True)
                             else:
@@ -452,7 +497,11 @@ class Action(threading.Thread):
                         self.final_result = first_value #final result run action
                         self.dict_state_result['final_result_action'] = self.final_result
                     else:
-                        self.dict_state_result['final_result_action'] = False
+                        if len(previous_final_output) > 0:
+                            for x in previous_final_output:
+                                self.dict_state_result['final_result_action'] = x
+                        else:
+                            self.dict_state_result['final_result_action'] = False
 
                 except Exception as ex:
                     stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
@@ -474,12 +523,14 @@ class Action(threading.Thread):
                             dependStep = dependency
                             if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
                                 output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                if output_info is not None:
+                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
 
-                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-
-                                stringhelpers.info("Action: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                    stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                else:
+                                    previous_final_output.append(False)
 
                             else:
                                 stringhelpers.err(
@@ -488,23 +539,31 @@ class Action(threading.Thread):
                                 continue
                         else:  # dependency == 0
                             output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                            if output_info is not None:
+                                previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                            previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
 
-                            self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
+                                stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
 
-                            stringhelpers.info("Action: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-
-                            if int(step) > 1:
-                                if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                    compare_final_output.append(True)
-                                else:
+                                if int(step) > 1:
+                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
+                                        compare_final_output.append(True)
+                                    else:
+                                        self.action_log['final_output'] = False
+                                        compare_final_output = []
+                                        break
+                            else:
+                                previous_final_output.append(False)
+                                if int(step) > 1:
                                     self.action_log['final_output'] = False
                                     compare_final_output = []
                                     break
                     else:  # last command in actions check point
                         try:
                             dependency = int(_command_running['dependency'])
+                            if dependency > 0 and int(step) > 0:
+                                continue
                             if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
                                 compare_final_output.append(True)
                             else:
