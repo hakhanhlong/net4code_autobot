@@ -42,8 +42,6 @@ class MegaTemplate(threading.Thread):
                     dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang)
                     self.result_templates.append(dict_template)
 
-
-
             #-----------------------------------------------------------------------------------------------------------
 
         else:
@@ -128,6 +126,7 @@ class MegaTemplate(threading.Thread):
         array_keep_device_rollback = []
         if len(self.result_templates) > 0:
             reversed_result = self.result_templates[::-1]
+            #reversed_result = self.result_templates
             for item in reversed_result:
                 dict_template_rollback = dict(devices=[])
                 for k, v in (item['state']).items():
@@ -150,7 +149,7 @@ class MegaTemplate(threading.Thread):
                                 dict_template_rollback['devices'].append(device)
                         array_keep_device_rollback.append(device_id)
                 array_data_rollback.append(dict_template_rollback)
-        return array_data_rollback
+        return array_data_rollback[::-1]
 
 
 class SubTemplate(threading.Thread):
@@ -384,6 +383,7 @@ class Action(threading.Thread):
         self.dict_state_result = dict()
 
 
+
         # sao the nay
     def run(self):
         try:
@@ -394,10 +394,14 @@ class Action(threading.Thread):
             self.action_log['result']['outputs'][key_list_command]['config'] = []
             self.action_log['result']['outputs'][key_list_command]['rollback'] = []
 
+            action_type = self.data_action['category_1']
             _list_action_commands = self.data_action['commands'][key_list_command]['config']  # list action_command config
             _list_action_rollback = self.data_action['commands'][key_list_command]['rollback']  # list action_command rollback
 
-            # --------------- list dict action command --------------------------------------------------------------
+            if action_type == 'Get':
+                _list_action_rollback = _list_action_commands
+
+            # --------------- list dict action command -----------------------------------------------------------------
             _dict_list_command = dict()
             _dict_list_params = self.params_action
             _array_step = []
@@ -409,8 +413,8 @@ class Action(threading.Thread):
                     _array_step.append(str(count))  # save step command
             else:
                 pass
-            # -------------------------------------------------------------------------------------------------------
-            # --------------- list dict action command rollback---------------------------------------------------------------------
+            # ----------------------------------------------------------------------------------------------------------
+            # --------------- list dict action command rollback---------------------------------------------------------
             _dict_list_command_rollback = dict()
             _dict_list_params_rollback = self.param_rollback_action
             _array_step_rollback = []
@@ -422,9 +426,9 @@ class Action(threading.Thread):
                     _array_step_rollback.append(str(count))  # save step command rollback
             else:
                 pass
-                # -------------------------------------------------------------------------------------------------------
+                # ------------------------------------------------------------------------------------------------------
 
-            '''#############################process command by dependency########################################'''
+            '''#############################process command by dependency############################################'''
             if len(_array_step) > 0 and self.is_rollback == False:
                 compare_final_output = []
                 previous_final_output = []
@@ -507,9 +511,9 @@ class Action(threading.Thread):
                     stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
                     # ---------------------------------------------------------------------------------------------------
 
-            '''##################################################################################################'''
+            '''######################################################################################################'''
 
-            '''#############################process command by rollback dependency########################################'''
+            '''#############################process command by rollback dependency###################################'''
             if len(_array_step_rollback) > 0 and self.is_rollback ==True:
                 compare_final_output = []
                 previous_final_output = []
@@ -587,9 +591,15 @@ class Action(threading.Thread):
 
                         self.action_log['final_output'] = first_value
                         self.final_result = first_value
-                        self.dict_state_result['final_result_action_rollback'] = self.final_result
+                        #self.dict_state_result['final_result_action_rollback'] = self.final_result
+                        self.dict_state_result['final_result_action'] = self.final_result
                     else:
-                        self.dict_state_result['final_result_action_rollback'] = False
+                        #pass
+                        if len(previous_final_output) > 0:
+                            for x in previous_final_output:
+                                self.dict_state_result['final_result_action'] = x
+                        else:
+                            self.dict_state_result['final_result_action'] = False
                 except Exception as ex:
                     stringhelpers.err("MEGA ACTIONS THREAD ERROR ROLLBACK COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
                     # ---------------------------------------------------------------------------------------------------
