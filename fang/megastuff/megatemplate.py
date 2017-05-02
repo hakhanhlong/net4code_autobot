@@ -135,21 +135,21 @@ class MegaTemplate(threading.Thread):
                         if device_id in array_keep_device_rollback:
                             dict_template_rollback['sub_template_name'] = item['sub_template_name']
                             for device in item['fang']['devices']:
-                                deviceid_compare = device['device']['device_id']
-                                if int(device_id) == int(deviceid_compare):
-                                    dict_template_rollback['devices'].append(device)
+                                #deviceid_compare = device['device']['device_id']
+                                #if int(device_id) == int(deviceid_compare):
+                                dict_template_rollback['devices'].append(device)
                     if v['final_sub_template'] == False:
                         stringhelpers.info("RUN ROLLBACK - device id: %s, sub_template_name %s" % (
                         device_id, item['sub_template_name'] + "\n\n"))
                         dict_template_rollback['sub_template_name'] = item['sub_template_name']
 
                         for device in item['fang']['devices']:
-                            deviceid_compare = device['device']['device_id']
-                            if int(device_id) == int(deviceid_compare):
-                                dict_template_rollback['devices'].append(device)
+                            #deviceid_compare = device['device']['device_id']
+                            #if int(device_id) == int(deviceid_compare):
+                            dict_template_rollback['devices'].append(device)
                         array_keep_device_rollback.append(device_id)
                 array_data_rollback.append(dict_template_rollback)
-        return array_data_rollback[::-1]
+        return array_data_rollback
 
 
 class SubTemplate(threading.Thread):
@@ -220,11 +220,10 @@ class SubTemplate(threading.Thread):
         if len(_array_step) > 0:# and self.is_rollback == False:
             compare_final_output = []
             previous_final_output = []
+
             for step  in _array_step:
                 # print(_dict_list_actions[step])
                 _action = _dict_list_actions[str(step)]
-
-
                 action_id = _action.get('action_id', 0)
                 if action_id > 0:  # command_id > 0
                     self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
@@ -241,13 +240,10 @@ class SubTemplate(threading.Thread):
                                                        fac, self.is_rollback, log_output_file_name)
                                 thread_action.start()
                                 result = thread_action.join()
-
                                 result['action_id'] = action_id
                                 result['device_id'] = device['device_id']
                                 result['device_vendor_ios'] = vendor_ios
-
                                 previous_final_output.append(result['final_result_action'])
-
                                 self.array_state_action.append(result)
                             else:
                                 stringhelpers.err(
@@ -310,43 +306,196 @@ class SubTemplate(threading.Thread):
             fac.terminal()  # finished fang command
 
 
+    def excecute_rollback(self, data_fang):
+
+        actions = sorted(data_fang['actions'].items(), reverse=False)  # get actions of each sub template # action contain linkedlist
+        #--------------------- build info device fang -----------------------------------------------------------
+        device = data_fang['device']['device_info']
+        self.dict_state_result[str(device['device_id'])] = {}
+        vendor_ios = data_fang['device']['vendor_ios']
+        host = device['ip_mgmt']
+        port = int(device['port_mgmt'])
+        username = device['username']
+        password = device['password']
+        device_type = device['os']
+        method = device['method']  # ssh, telnet
+        parameters = {
+            'device_type': device_type,
+            'host': host,
+            'protocol': method.lower(),
+            'username': username,
+            'password': password,
+            'port': port,
+            'timeout': 300
+        }
+        print("MEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
+        fac = FactoryConnector(**parameters)
+        log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
+        fac = fac.execute_keep_alive(loginfo=log_output_file_name)
+        if not fac.is_alive():
+            print("CONNECT DEVICE: host=%s, port=%s, devicetype=%s FAIL\n\n" % (parameters['host'], parameters['port'], parameters['device_type']))
+            return None
+        #-------------------------------------------------------------------------------------------------------
+
+        # --------------- list dict action command --------------------------------------------------------------
+        _dict_list_actions = dict()
+        # _dict_list_action params = self.data_action['test_args']
+        _array_step = []
+        param_action = None
+        param_rollback_action = None
+        if len(actions) > 0:
+            for step, action in actions:
+                if str(step) != 'args' and (step) != 'rollback_args':
+                    _dict_list_actions[str(step)] = action
+                    _array_step.append(str(step))  # save step action
+                else:
+                    if str(step) == 'args': #array contain dict argument
+                        param_action = action
+                    else:
+                        param_rollback_action = action #array contain dict argument #rollback_args
+        else:
+            pass
+
+        _array_step = _array_step[::-1]
+        # -------------------------------------------------------------------------------------------------------
+        if len(_array_step) > 0:# and self.is_rollback == False:
+            compare_final_output = []
+            previous_final_output = []
+            for step  in _array_step:
+                # print(_dict_list_actions[step])
+                _action = _dict_list_actions[str(step)]
+                action_id = _action.get('action_id', 0)
+                if action_id > 0:  # command_id > 0
+                    self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
+                    try:
+                        thread_action_name = "[ROLLBACK] Thread-Action_%s-In-%s" % (action_id, self.name)
+                        action_data = self._request.get().json()
+                        thread_action = Action(thread_action_name, action_data, action_id, param_action,
+                                               param_rollback_action, vendor_ios,
+                                               fac, self.is_rollback, log_output_file_name)
+                        thread_action.start()
+                        result = thread_action.join()
+                        result['action_id'] = action_id
+                        result['device_id'] = device['device_id']
+                        result['device_vendor_ios'] = vendor_ios
+                        previous_final_output.append(result['final_result_action'])
+                        self.array_state_action.append(result)
+
+                    except:
+                        stringhelpers.warn("[ROLLBACK][%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
+                else:  # last command in actions check point
+                    pass
+
+
+            #------------------------ calculate decide template is True or False ---------------------------------------
+            #if len(previous_final_output) > 0:
+            #    for x in previous_final_output:
+            #        if x:
+            #            self.dict_state_result[str(device['device_id'])]["final_sub_template"] = True
+            #            self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
+            #        else:
+            #            self.dict_state_result[str(device['device_id'])]["final_sub_template"] = False
+            #            self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
+            #else:
+            #    self.dict_state_result[str(device['device_id'])]["final_sub_template"] = False
+            #    self.dict_state_result[str(device['device_id'])]["actions"] = self.array_state_action
+            #-----------------------------------------------------------------------------------------------------------
+
+        self.array_state_action = []
+        fac.remove_file_log(log_output_file_name)
+        # stringhelpers.warn(str(self.action_log))
+        fac.terminal()  # finished fang command
+
 
     def run(self):
         try:
             if self.subtemplate is not None:
                 threading_array = []
                 stringhelpers.info("[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
+                filnal_result = []
 
                 #------------------ chay ko song song ------------------------------------------------------------------
                 for device in self.subtemplate['devices']:
-                    #-------------- check has run next subtemplate belong previous result subtemplate
-                    if len(self.result_templates) > 0:
-                        before_result = self.result_templates[len(self.result_templates)-1]
-                        device_id = device['device']['device_info']['device_id']
+                    device_id = device['device']['device_info']['device_id']
+
+                    if self.is_rollback:
+                        self.excecute_rollback(device)
+                    else:
+                        # -------------- check has run next subtemplate belong previous result subtemplate
+                        if len(self.result_templates) > 0:
+                            before_result = self.result_templates[len(self.result_templates) - 1]
+                            try:
+                                final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
+                                if final_sub_template == False:
+                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (
+                                    self.name, device_id))
+                                    break
+                            except:
+                                print(
+                                    "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                                break
+
+                        # --------------------------------------------------------------------------------
+                        if len(filnal_result) == 0:
+                            self.excecute(device)
+                        else:
+                            if filnal_result[len(filnal_result) - 1] == True:
+                                self.excecute(device)
+
+                    if self.is_rollback == False:
                         try:
-                            final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
-                            if final_sub_template == False:
-                                print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
-                                continue
+                            filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
                         except:
-                            print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
-                            continue
+                            pass
 
-                    #--------------------------------------------------------------------------------
 
-                    self.excecute(device)
+
                 #-------------------------------------------------------------------------------------------------------
 
                 #------------------- chay song song --------------------------------------------------------------------
-                #for device in self.subtemplate['devices']:
-                #    _thread = threading.Thread(target=self.excecute, args=(device, ))
-                #    _thread.start()
-                #    threading_array.append(_thread)
+                '''for device in self.subtemplate['devices']:
+                    device_id = device['device']['device_info']['device_id']
+
+                    if self.is_rollback:
+                        self.excecute_rollback(device)
+                    else:
+                        # -------------- check has run next subtemplate belong previous result subtemplate
+                        if len(self.result_templates) > 0:
+                            before_result = self.result_templates[len(self.result_templates) - 1]
+                            try:
+                                final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
+                                if final_sub_template == False:
+                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (
+                                    self.name, device_id))
+                                    break
+                            except:
+                                print(
+                                    "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                                break
+
+                        # --------------------------------------------------------------------------------
+                        if len(filnal_result) == 0:
+                            _thread = threading.Thread(target=self.excecute, args=(device,))
+                            _thread.start()
+                            threading_array.append(_thread)
+                        else:
+                            if filnal_result[len(filnal_result) - 1] == True:
+                                self.excecute(device)
+
+                    if self.is_rollback == False:
+                        try:
+                            filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
+                        except:
+                            pass
+
+
                 #    #_thread.join()
                 #    #self.excecute(device)
-                #for x in threading_array:
-                #    x.join()
+
+                for x in threading_array:
+                    x.join()'''
                 #-------------------------------------------------------------------------------------------------------
+
 
 
         except Exception as exError:
@@ -398,8 +547,8 @@ class Action(threading.Thread):
             _list_action_commands = self.data_action['commands'][key_list_command]['config']  # list action_command config
             _list_action_rollback = self.data_action['commands'][key_list_command]['rollback']  # list action_command rollback
 
-            if action_type == 'Get':
-                _list_action_rollback = _list_action_commands
+
+
 
             # --------------- list dict action command -----------------------------------------------------------------
             _dict_list_command = dict()
@@ -518,6 +667,11 @@ class Action(threading.Thread):
                 compare_final_output = []
                 previous_final_output = []
                 for step in _array_step_rollback:
+
+                    if action_type == 'Get':
+                        self.dict_state_result['final_result_action'] = True
+                        break
+
                     _command_running = _dict_list_command_rollback[step]
                     # if _command_running['dependency'] == '0':
                     command_id = _command_running.get('command_id', 0)
@@ -578,31 +732,32 @@ class Action(threading.Thread):
                 stringhelpers.err("MEGA ACTIONS THREAD ROLLBACK FINISHED: | THREAD %s" % (self.name))
 
                 # -------------- compare final_output for action ----------------------------------------------------
-                try:
-                    if len(compare_final_output) > 0:
-                        first_value = None
-                        count = 0
-                        for x in compare_final_output:
-                            if count == 0:
-                                first_value = x
-                            else:
-                                first_value = func_compare('=', first_value, x)
-                            count = count + 1
+                if action_type != 'Get':
+                    try:
+                        if len(compare_final_output) > 0:
+                            first_value = None
+                            count = 0
+                            for x in compare_final_output:
+                                if count == 0:
+                                    first_value = x
+                                else:
+                                    first_value = func_compare('=', first_value, x)
+                                count = count + 1
 
-                        self.action_log['final_output'] = first_value
-                        self.final_result = first_value
-                        #self.dict_state_result['final_result_action_rollback'] = self.final_result
-                        self.dict_state_result['final_result_action'] = self.final_result
-                    else:
-                        #pass
-                        if len(previous_final_output) > 0:
-                            for x in previous_final_output:
-                                self.dict_state_result['final_result_action'] = x
+                            self.action_log['final_output'] = first_value
+                            self.final_result = first_value
+                            #self.dict_state_result['final_result_action_rollback'] = self.final_result
+                            self.dict_state_result['final_result_action'] = self.final_result
                         else:
-                            self.dict_state_result['final_result_action'] = False
-                except Exception as ex:
-                    stringhelpers.err("MEGA ACTIONS THREAD ERROR ROLLBACK COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
-                    # ---------------------------------------------------------------------------------------------------
+                            #pass
+                            if len(previous_final_output) > 0:
+                                for x in previous_final_output:
+                                    self.dict_state_result['final_result_action'] = x
+                            else:
+                                self.dict_state_result['final_result_action'] = False
+                    except Exception as ex:
+                        stringhelpers.err("MEGA ACTIONS THREAD ERROR ROLLBACK COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
+                        # ---------------------------------------------------------------------------------------------------
 
             '''##################################################################################################'''
 
