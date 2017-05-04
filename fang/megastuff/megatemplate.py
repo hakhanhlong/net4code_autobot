@@ -415,7 +415,7 @@ class SubTemplate(threading.Thread):
                 filnal_result = []
 
                 #------------------ chay ko song song ------------------------------------------------------------------
-                for device in self.subtemplate['devices']:
+                '''for device in self.subtemplate['devices']:
                     device_id = device['device']['device_info']['device_id']
 
                     if self.is_rollback:
@@ -446,16 +446,12 @@ class SubTemplate(threading.Thread):
                         try:
                             filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
                         except:
-                            pass
-
-
-
+                            pass'''
                 #-------------------------------------------------------------------------------------------------------
 
                 #------------------- chay song song --------------------------------------------------------------------
-                '''for device in self.subtemplate['devices']:
+                for device in self.subtemplate['devices']:
                     device_id = device['device']['device_info']['device_id']
-
                     if self.is_rollback:
                         self.excecute_rollback(device)
                     else:
@@ -465,8 +461,7 @@ class SubTemplate(threading.Thread):
                             try:
                                 final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
                                 if final_sub_template == False:
-                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (
-                                    self.name, device_id))
+                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
                                     break
                             except:
                                 print(
@@ -480,20 +475,19 @@ class SubTemplate(threading.Thread):
                             threading_array.append(_thread)
                         else:
                             if filnal_result[len(filnal_result) - 1] == True:
-                                self.excecute(device)
+                                _thread = threading.Thread(target=self.excecute, args=(device,))
+                                _thread.start()
+                                threading_array.append(_thread)
 
-                    if self.is_rollback == False:
+                if self.is_rollback == False:
+                    for x in threading_array:
+                        x.join()
+                    for device in self.subtemplate['devices']:
+                        device_id = device['device']['device_info']['device_id']
                         try:
                             filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
                         except:
                             pass
-
-
-                #    #_thread.join()
-                #    #self.excecute(device)
-
-                for x in threading_array:
-                    x.join()'''
                 #-------------------------------------------------------------------------------------------------------
 
 
