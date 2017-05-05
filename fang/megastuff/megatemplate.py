@@ -25,9 +25,9 @@ class MegaTemplate(threading.Thread):
             #-----------------------------------------------------------------------------------------------------------
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
-                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates)
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']))
                 subtemplate_thread.start()
-                dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang)
+                dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
                 self.result_templates.append(dict_template)
             # ----------------------------------------------------------------------------------------------------------
 
@@ -37,9 +37,9 @@ class MegaTemplate(threading.Thread):
                 self.result_templates = []
                 for fang in self.info_rollback:  # fang sub template
                     sub_template_name = fang['sub_template_name']
-                    subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates)
+                    subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']))
                     subtemplate_thread.start()
-                    dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang)
+                    dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
                     self.result_templates.append(dict_template)
 
             #-----------------------------------------------------------------------------------------------------------
@@ -56,6 +56,7 @@ class MegaTemplate(threading.Thread):
         # ----------------device list------------------------------------------------------------------------------------
         run_devices = sorted(self.data_template['run_devices'].items(), reverse=False)
         key_maps = sorted(self.data_template['map'].keys()) #key number sub template
+        run_mode = self.data_template["run_mode"]
 
         for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
             sub_template_number = _k
@@ -72,6 +73,16 @@ class MegaTemplate(threading.Thread):
                     info_fang = {} #clear each add info
                     subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
 
+                    # ------------ get data chay mode parallel ---------------------------------------------------------
+                    try:
+                        mode = int(run_mode.get(sub_template_number, 0))
+                        if mode == 1:
+                            subtemplate['mode'] = 1 # not run parallel
+                        elif mode == 2:
+                            subtemplate['mode'] = 2 # run parallel
+                    except:
+                        pass
+                    # --------------------------------------------------------------------------------------------------
 
                     try:
                         device_fang = dict(device_id=k, role=device_role_name)
@@ -124,37 +135,37 @@ class MegaTemplate(threading.Thread):
     def buildinfo_rollback(self):
         array_data_rollback = []
         array_keep_device_rollback = []
+
         if len(self.result_templates) > 0:
             reversed_result = self.result_templates[::-1]
             #reversed_result = self.result_templates
             for item in reversed_result:
                 dict_template_rollback = dict(devices=[])
+                count = 0
                 for k, v in (item['state']).items():
                     device_id = k
                     if len(array_keep_device_rollback) > 0:
                         if device_id in array_keep_device_rollback:
                             dict_template_rollback['sub_template_name'] = item['sub_template_name']
+                            dict_template_rollback['mode'] = item['mode']
                             for device in item['fang']['devices']:
-                                #deviceid_compare = device['device']['device_id']
-                                #if int(device_id) == int(deviceid_compare):
                                 dict_template_rollback['devices'].append(device)
                     if v['final_sub_template'] == False:
-                        stringhelpers.info("RUN ROLLBACK - device id: %s, sub_template_name %s" % (
-                        device_id, item['sub_template_name'] + "\n\n"))
-                        dict_template_rollback['sub_template_name'] = item['sub_template_name']
-
-                        for device in item['fang']['devices']:
-                            #deviceid_compare = device['device']['device_id']
-                            #if int(device_id) == int(deviceid_compare):
-                            dict_template_rollback['devices'].append(device)
-                        array_keep_device_rollback.append(device_id)
+                        stringhelpers.info("RUN ROLLBACK - device id: %s, sub_template_name %s" % (device_id, item['sub_template_name'] + "\n\n"))
+                        if count == 0:
+                            dict_template_rollback['sub_template_name'] = item['sub_template_name']
+                            dict_template_rollback['mode'] = item['mode']
+                            for device in item['fang']['devices']:
+                                dict_template_rollback['devices'].append(device)
+                            array_keep_device_rollback.append(device_id)
+                            count = 1
                 array_data_rollback.append(dict_template_rollback)
         return array_data_rollback
 
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -165,6 +176,7 @@ class SubTemplate(threading.Thread):
         self.is_rollback = is_rollback
         self.is_check_run_finished = False
         self.result_templates = result_templates
+        self.mode = mode
 
 
     def excecute(self, data_fang):
@@ -415,80 +427,91 @@ class SubTemplate(threading.Thread):
                 filnal_result = []
 
                 #------------------ chay ko song song ------------------------------------------------------------------
-                '''for device in self.subtemplate['devices']:
-                    device_id = device['device']['device_info']['device_id']
 
-                    if self.is_rollback:
-                        self.excecute_rollback(device)
-                    else:
-                        # -------------- check has run next subtemplate belong previous result subtemplate
-                        if len(self.result_templates) > 0:
-                            before_result = self.result_templates[len(self.result_templates) - 1]
-                            try:
-                                final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
-                                if final_sub_template == False:
-                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (
-                                    self.name, device_id))
-                                    break
-                            except:
-                                print(
-                                    "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
-                                break
+                if self.mode == 1: #mode = 1, not parallel
 
-                        # --------------------------------------------------------------------------------
-                        if len(filnal_result) == 0:
-                            self.excecute(device)
+                    for device in self.subtemplate['devices']:
+                        device_id = device['device']['device_info']['device_id']
+
+                        if self.is_rollback:
+                            self.excecute_rollback(device)
                         else:
-                            if filnal_result[len(filnal_result) - 1] == True:
-                                self.excecute(device)
-
-                    if self.is_rollback == False:
-                        try:
-                            filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
-                        except:
-                            pass'''
-                #-------------------------------------------------------------------------------------------------------
-
-                #------------------- chay song song --------------------------------------------------------------------
-                for device in self.subtemplate['devices']:
-                    device_id = device['device']['device_info']['device_id']
-                    if self.is_rollback:
-                        self.excecute_rollback(device)
-                    else:
-                        # -------------- check has run next subtemplate belong previous result subtemplate
-                        if len(self.result_templates) > 0:
-                            before_result = self.result_templates[len(self.result_templates) - 1]
-                            try:
-                                final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
-                                if final_sub_template == False:
-                                    print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                            # -------------- check has run next subtemplate belong previous result subtemplate
+                            if len(self.result_templates) > 0:
+                                before_result = self.result_templates[len(self.result_templates) - 1]
+                                try:
+                                    final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
+                                    if final_sub_template == False:
+                                        print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (
+                                        self.name, device_id))
+                                        break
+                                except:
+                                    print(
+                                        "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
                                     break
-                            except:
-                                print(
-                                    "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
-                                break
 
-                        # --------------------------------------------------------------------------------
-                        if len(filnal_result) == 0:
-                            _thread = threading.Thread(target=self.excecute, args=(device,))
+                            # --------------------------------------------------------------------------------
+                            if len(filnal_result) == 0:
+                                self.excecute(device)
+                            else:
+                                if filnal_result[len(filnal_result) - 1] == True:
+                                    self.excecute(device)
+
+                        if self.is_rollback == False:
+                            try:
+                                filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
+                            except:
+                                pass
+                    #-------------------------------------------------------------------------------------------------------
+                else: # mode = 2, run parallel
+
+                    #------------------- chay song song --------------------------------------------------------------------
+                    for device in self.subtemplate['devices']:
+                        device_id = device['device']['device_info']['device_id']
+                        if self.is_rollback:
+                            _thread = threading.Thread(target=self.excecute_rollback, args=(device,))
                             _thread.start()
                             threading_array.append(_thread)
+
+                            #self.excecute_rollback(device)
                         else:
-                            if filnal_result[len(filnal_result) - 1] == True:
+                            # -------------- check has run next subtemplate belong previous result subtemplate
+                            if len(self.result_templates) > 0:
+                                before_result = self.result_templates[len(self.result_templates) - 1]
+                                try:
+                                    final_sub_template = before_result['state'][str(device_id)]['final_sub_template']
+                                    if final_sub_template == False:
+                                        print("SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                                        break
+                                except:
+                                    print(
+                                        "SUB TEMPLATE: %s FOR DEVICE: %s DON'T CONTINIOUS RUN\n\n" % (self.name, device_id))
+                                    break
+
+                            # --------------------------------------------------------------------------------
+                            if len(filnal_result) == 0:
                                 _thread = threading.Thread(target=self.excecute, args=(device,))
                                 _thread.start()
                                 threading_array.append(_thread)
+                            else:
+                                if filnal_result[len(filnal_result) - 1] == True:
+                                    _thread = threading.Thread(target=self.excecute, args=(device,))
+                                    _thread.start()
+                                    threading_array.append(_thread)
 
-                if self.is_rollback == False:
-                    for x in threading_array:
-                        x.join()
-                    for device in self.subtemplate['devices']:
-                        device_id = device['device']['device_info']['device_id']
-                        try:
-                            filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
-                        except:
-                            pass
-                #-------------------------------------------------------------------------------------------------------
+                    if self.is_rollback == False:
+                        for x in threading_array:
+                            x.join()
+                        for device in self.subtemplate['devices']:
+                            device_id = device['device']['device_info']['device_id']
+                            try:
+                                filnal_result.append(self.dict_state_result[str(device_id)]["final_sub_template"])
+                            except:
+                                pass
+                    else: #rollback
+                        for x in threading_array:
+                            x.join()
+                    #-------------------------------------------------------------------------------------------------------
 
 
 
