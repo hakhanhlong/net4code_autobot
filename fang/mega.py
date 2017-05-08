@@ -6,6 +6,7 @@ from api.request_url import RequestURL
 from .megastuff.megacommand import MegaCommand
 from .megastuff.megaaction import MegaAction
 from .megastuff.megatemplate import MegaTemplate
+from .megastuff.megadiscovery import MegaDiscovery
 
 
 class MegaManager(threading.Thread):
@@ -23,6 +24,7 @@ class MegaManager(threading.Thread):
         dict_command = dict()
         dict_action = dict()
         dict_template = dict()
+        dict_template_discovery = dict()
         while not self.is_stop:
             try:
                 self.counter = self.counter + 1
@@ -56,9 +58,9 @@ class MegaManager(threading.Thread):
                             mega_action = MegaAction("Thread-Action-%d" % (x['action_id']), x, dict_action)
                             mega_action.start()
                 time.sleep(1000)'''
-                #---------------------------------------------------------------------------------------------------------
+                #-------------------------------------------------------------------------------------------------------
 
-                # -------------- MEGA RUN TEMPLATE TEST -------------------------------------------------------------------
+                ''''#-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
                 _request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
                 _list_templates = _request.get().json()
                 #_list_templates = [_request.get().json()]
@@ -73,7 +75,25 @@ class MegaManager(threading.Thread):
                             mega_template.start()
                     pass
                 # ---------------------------------------------------------------------------------------------------------
+                time.sleep(1000)'''
+
+                #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
+                _request.url = self.requestURL.MEGA_URL_TEMPLATE_DISCOVERY
+                #_list_templates = _request.get().json()
+                _list_templates = [_request.get().json()]
+                if len(_list_templates) > 0:
+                    for x in _list_templates:
+                        key_template = 'template_discovery_%d' % (x['template_id'])
+                        if dict_template_discovery.get(key_template, None) is not None:
+                            pass
+                        else:
+                            dict_template_discovery[key_template] = key_template
+                            mega_template_discovery = MegaDiscovery("Thread-Discovery-Template-%d" % (x['template_id']), x, dict_template_discovery)
+                            mega_template_discovery.start()
+                    pass
+                # ---------------------------------------------------------------------------------------------------------
                 time.sleep(1000)
+
 
             except Exception as e:
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))

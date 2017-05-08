@@ -23,5 +23,7 @@ class RequestURL:
 
         self.MEGA_URL_LIST_TEMPLATE_UNTESTED = os.environ.get('MEGA_URL_LIST_TEMPLATE_UNTESTED')
 
+        self.MEGA_URL_TEMPLATE_DISCOVERY = os.environ.get('MEGA_URL_TEMPLATE_DISCOVERY')
+
 
 
