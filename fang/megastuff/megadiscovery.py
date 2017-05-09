@@ -17,6 +17,7 @@ class MegaDiscovery(threading.Thread):
         self.dict_template = dict_template
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
+
         self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = []
 
@@ -58,6 +59,7 @@ class MegaDiscovery(threading.Thread):
                 role_exist =  dict_map_template.get(device_role_name, None)
                 count_step = 0
                 if role_exist: # compare role of device == role of template
+
                     info_fang = {} #clear each add info
                     subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
 
@@ -75,8 +77,16 @@ class MegaDiscovery(threading.Thread):
                     try:
                         device_fang = dict(device_id=k, role=device_role_name)
                         device_id = device_fang['device_id']
+
                         self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
+
+                        print(self._request.url, end='\n\n')
+
                         device = self._request.get().json()
+
+
+
+
                         device_fang['device_info'] = dict(
                             port_mgmt=device['port_mgmt'],
                             method=device['method'],

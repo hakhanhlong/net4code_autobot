@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 
 class RequestHelpers:
 
@@ -8,11 +9,16 @@ class RequestHelpers:
         self.params = params
 
 
+
     def get(self):
         if self.params is not None:
-            return requests.get(self.url, params=self.params)
+            res = requests.get(self.url, params=self.params)
+            res.raise_for_status()
+            return res
         else:
-            return requests.get(self.url)
+            res = requests.get(self.url, params=self.params)
+            res.raise_for_status()
+            return res
 
     def post(self):
         return requests.post(self.url, data=json.dumps(self.params))

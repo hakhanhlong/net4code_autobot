@@ -6,6 +6,7 @@ from fang.ironman import IronManManager
 from fang.flask import FlaskManager
 
 
+
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
@@ -23,6 +24,11 @@ def main():
 
     _ironman_manager = IronManManager('IRONMAN-MANAGEMENT', False)
     _ironman_manager.start()'''
+
+
+
+    #resource.setrlimit(resource.RLIMIT_NOFILE, (50, resource.RLIM_INFINITY))
+
 
 
 if __name__ == '__main__':

@@ -60,8 +60,8 @@ class MegaManager(threading.Thread):
                 time.sleep(1000)'''
                 #-------------------------------------------------------------------------------------------------------
 
-                ''''#-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
-                _request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
+                #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
+                '''_request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
                 _list_templates = _request.get().json()
                 #_list_templates = [_request.get().json()]
                 if len(_list_templates) > 0:
@@ -80,9 +80,9 @@ class MegaManager(threading.Thread):
                 #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
                 _request.url = self.requestURL.MEGA_URL_TEMPLATE_DISCOVERY
                 #_list_templates = _request.get().json()
-                _list_templates = [_request.get().json()]
-                if len(_list_templates) > 0:
-                    for x in _list_templates:
+                _list_templates_descovery = [_request.get().json()]
+                if len(_list_templates_descovery) > 0:
+                    for x in _list_templates_descovery:
                         key_template = 'template_discovery_%d' % (x['template_id'])
                         if dict_template_discovery.get(key_template, None) is not None:
                             pass
