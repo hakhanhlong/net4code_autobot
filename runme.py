@@ -5,7 +5,7 @@ from fang.mega import MegaManager
 from fang.ironman import IronManManager
 from fang.flask import FlaskManager
 
-
+from mongoengine import connect
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -13,7 +13,7 @@ load_dotenv(dotenv_path)
 
 def main():
 
-
+    connect(host="mongodb://27.78.16.56:8040/iron_man")
 
     stringhelpers.print_welcome()
     _mega_manager = MegaManager('MEGA-MANAGEMENT', False)

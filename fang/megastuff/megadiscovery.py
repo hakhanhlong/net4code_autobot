@@ -5,6 +5,9 @@ from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
 import json
+from database.model.interfaces import Interfaces
+from database.impl.interfaces_Impl import InterfaceImpl
+
 
 
 
@@ -36,9 +39,6 @@ class MegaDiscovery(threading.Thread):
         else:
             stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
 
-        #test = self.result_templates
-
-        #sdasd = ""
 
     def buildinfo_subtemplates(self):
         data_fang = dict(subtemplates=[])
@@ -167,7 +167,7 @@ class SubTemplate(threading.Thread):
             'port': port,
             'timeout': 300
         }
-        print("MEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
+        print("\nMEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
         fac = FactoryConnector(**parameters)
         log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
         fac = fac.execute_keep_alive(loginfo=log_output_file_name)
@@ -293,7 +293,7 @@ class SubTemplate(threading.Thread):
         try:
             if self.subtemplate is not None:
                 threading_array = []
-                stringhelpers.info("[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
+                stringhelpers.info("\n[INFO]-RUN SUBTEMPLATE: %s" % (self.name))
                 filnal_result = []
 
                 #------------------ chay ko song song ------------------------------------------------------------------
@@ -674,6 +674,33 @@ class Action(threading.Thread):
                                     rows_dict[name] = array_value[index]
                                 except:
                                     rows_dict[name] = ''
+
+                            #------------------- process insert/update/check database tablet interfaces ----------------
+                            try:
+                                if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
+                                    continue
+
+                                interfaceimpl = InterfaceImpl()
+                                intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
+                                if intf: #exist interfaces then update
+                                    interface_dict = {
+                                        'device_id': self.deviceid,
+                                        'interface_name': rows_dict['Interface'],
+                                        'data': rows_dict
+                                    }
+                                    interfaceimpl.update(**interface_dict)
+                                else: #not exist then insert
+                                    interface_dict = {
+                                        'device_id': self.deviceid,
+                                        'interface_name': rows_dict['Interface'],
+                                        'data': rows_dict
+                                    }
+                                    interfaceimpl.save(**interface_dict)
+                            except Exception as ex:
+                                _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)
+                                stringhelpers.err(_strError)
+                            #-------------------------------------------------------------------------------------------
+
                             output_result['rows'].append(rows_dict)
 
                         if ('Interface' in row) and ('Protocol' in row): # phan loai row header
@@ -688,23 +715,38 @@ class Action(threading.Thread):
                 arrayRow = list(filter(None, arrayRow))
                 is_next = False
                 for row in arrayRow:
-                    if '#' not in row:
-
+                    if '#' not in row and 'Total entries displayed:' not in row:
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
                             for index, name in enumerate(array_header):
-                                try:
-                                    rows_dict[name] = array_value[index]
-                                except:
-                                    rows_dict[name] = ''
+                                if name is not None or name is not '':
+                                    try:
+                                        rows_dict[name.replace(' ', '')] = array_value[index]
+                                    except:
+                                        rows_dict[name.replace(' ', '')] = ''
+
+                            # ------------------- process insert/update/check database tablet interfaces ----------------
+                            try:
+                                if rows_dict['DeviceID'] is None or rows_dict['LocalIntf'] == '':
+                                    continue
+
+                                interfaceimpl = InterfaceImpl()
+                                intf = interfaceimpl.get_interface(self.deviceid, rows_dict['LocalIntf'])
+                                if intf:  # exist interfaces then process lldp
+                                    pass
+                            except Exception as ex:
+                                _strError = "[DISCOVERY][INSERT][UPDATE][LLDP]: %s | THREAD %s" % (ex, self.name)
+                                stringhelpers.err(_strError)
+                            # -------------------------------------------------------------------------------------------
+
                             output_result['rows'].append(rows_dict)
 
                         if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
-                            array_header = row.split()
+                            array_header = row.split('  ')
                             is_next = True
             else:
-                _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (self.name, commandtext)
+                _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
                 stringhelpers.err(_strError)
 
 
