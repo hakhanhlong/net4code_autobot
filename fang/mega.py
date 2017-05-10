@@ -95,6 +95,7 @@ class MegaManager(threading.Thread):
                 time.sleep(1000)
 
 
+
             except Exception as e:
                 stringhelpers.err("MEGA MAIN THREAD ERROR %s" % (e))
             except ConnectionError as errConn:

@@ -215,7 +215,8 @@ class SubTemplate(threading.Thread):
 
                                 thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                        param_rollback_action, vendor_ios,
-                                                       fac, self.is_rollback, log_output_file_name)
+                                                       fac, self.is_rollback,
+                                                       log_output_file_name, deviceid=device['device_id'])
                                 thread_action.start()
                                 result = thread_action.join()
                                 result['action_id'] = action_id
@@ -232,7 +233,8 @@ class SubTemplate(threading.Thread):
                         else:  # dependency == 0
                             thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                    param_rollback_action, vendor_ios,
-                                                   fac, self.is_rollback, log_output_file_name)
+                                                   fac, self.is_rollback, log_output_file_name,
+                                                   deviceid=device['device_id'])
                             thread_action.start()
                             result = thread_action.join()
                             result['action_id'] = action_id
@@ -385,7 +387,8 @@ class SubTemplate(threading.Thread):
 class Action(threading.Thread):
     """ Thread instance each process mega """
     def __init__(self, name, data_action = None, action_id = None, params_action=None, param_rollback_action=None,
-                 vendor_os=None, session_fang=None, is_rolback=False, file_log=None):
+                 vendor_os=None, session_fang=None, is_rolback=False, file_log=None,
+                 deviceid=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
@@ -405,6 +408,7 @@ class Action(threading.Thread):
 
         self.final_result = False
         self.dict_state_result = dict()
+        self.deviceid = deviceid
 
 
 
@@ -472,7 +476,8 @@ class Action(threading.Thread):
                                     self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
                                     stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
                                 else:
-                                    previous_final_output.append(False)
+                                    #previous_final_output.append(False)
+                                    previous_final_output.append(True)
                             else:
                                 stringhelpers.err(
                                     "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
@@ -488,13 +493,16 @@ class Action(threading.Thread):
                                     if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
                                         compare_final_output.append(True)
                                     else:
-                                        self.action_log['final_output'] = False
+                                        #self.action_log['final_output'] = False
+                                        self.action_log['final_output'] = True
                                         compare_final_output = []
                                         break
                             else:
-                                previous_final_output.append(False)
+                                #previous_final_output.append(False)
+                                previous_final_output.append(True)
                                 if int(step) > 1:
-                                    self.action_log['final_output'] = False
+                                    #self.action_log['final_output'] = False
+                                    self.action_log['final_output'] = True
                                     compare_final_output=[]
                                     break
                     else:  # last command in actions check point
@@ -505,9 +513,11 @@ class Action(threading.Thread):
                             if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
                                 compare_final_output.append(True)
                             else:
-                                compare_final_output.append(False)
+                                #compare_final_output.append(False)
+                                compare_final_output.append(True)
                         except:
-                            compare_final_output.append(False)
+                            #compare_final_output.append(False)
+                            compare_final_output.append(True)
 
                 # -------------- compare final_output for action ----------------------------------------------------
                 try:
@@ -529,7 +539,8 @@ class Action(threading.Thread):
                             for x in previous_final_output:
                                 self.dict_state_result['final_result_action'] = x
                         else:
-                            self.dict_state_result['final_result_action'] = False
+                            #self.dict_state_result['final_result_action'] = False
+                            self.dict_state_result['final_result_action'] = True
 
                 except Exception as ex:
                     stringhelpers.err("MEGA ACTIONS THREAD ERROR COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
@@ -537,104 +548,7 @@ class Action(threading.Thread):
 
             '''######################################################################################################'''
 
-            '''#############################process command by rollback dependency###################################'''
-            if len(_array_step_rollback) > 0 and self.is_rollback ==True:
-                compare_final_output = []
-                previous_final_output = []
-                for step in _array_step_rollback:
 
-                    if action_type == 'Get':
-                        self.dict_state_result['final_result_action'] = True
-                        break
-
-                    _command_running = _dict_list_command_rollback[step]
-                    # if _command_running['dependency'] == '0':
-                    command_id = _command_running.get('command_id', 0)
-                    if command_id > 0:  # command_id > 0
-                        dependency = int(_command_running['dependency'])
-                        if dependency > 0:  # run need compare
-                            dependStep = dependency
-                            if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
-                                output_info = self.process_each_command(command_id, _dict_list_params_rollback)
-                                if output_info is not None:
-                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-
-                                    stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-                                else:
-                                    previous_final_output.append(False)
-
-                            else:
-                                stringhelpers.err(
-                                    "MEGA ACTIONS ROLLBACK STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
-                                previous_final_output.append(False)
-                                continue
-                        else:  # dependency == 0
-                            output_info = self.process_each_command(command_id, _dict_list_params_rollback)
-                            if output_info is not None:
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-
-                                stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
-                                    else:
-                                        self.action_log['final_output'] = False
-                                        compare_final_output = []
-                                        break
-                            else:
-                                previous_final_output.append(False)
-                                if int(step) > 1:
-                                    self.action_log['final_output'] = False
-                                    compare_final_output = []
-                                    break
-                    else:  # last command in actions check point
-                        try:
-                            dependency = int(_command_running['dependency'])
-                            if dependency > 0 and int(step) > 0:
-                                continue
-                            if (int(_command_running['condition']) == int(previous_final_output[dependency - 1])):
-                                compare_final_output.append(True)
-                            else:
-                                compare_final_output.append(False)
-                        except:
-                            compare_final_output.append(False)
-
-                stringhelpers.err("MEGA ACTIONS THREAD ROLLBACK FINISHED: | THREAD %s" % (self.name))
-
-                # -------------- compare final_output for action ----------------------------------------------------
-                if action_type != 'Get':
-                    try:
-                        if len(compare_final_output) > 0:
-                            first_value = None
-                            count = 0
-                            for x in compare_final_output:
-                                if count == 0:
-                                    first_value = x
-                                else:
-                                    first_value = func_compare('=', first_value, x)
-                                count = count + 1
-
-                            self.action_log['final_output'] = first_value
-                            self.final_result = first_value
-                            #self.dict_state_result['final_result_action_rollback'] = self.final_result
-                            self.dict_state_result['final_result_action'] = self.final_result
-                        else:
-                            #pass
-                            if len(previous_final_output) > 0:
-                                for x in previous_final_output:
-                                    self.dict_state_result['final_result_action'] = x
-                            else:
-                                self.dict_state_result['final_result_action'] = False
-                    except Exception as ex:
-                        stringhelpers.err("MEGA ACTIONS THREAD ERROR ROLLBACK COMAPRE ACTION FINAL-OUTPUT: %s | THREAD %s" % (ex, self.name))
-                        # ---------------------------------------------------------------------------------------------------
-
-            '''##################################################################################################'''
 
             # ------------------------------------ process save log action --------------------------------------
 
@@ -722,136 +636,82 @@ class Action(threading.Thread):
 
 
             # processing parsing command follow output ###########################################
-            command_type = self.data_command['type']
-            action_command_log = self.parsing(command_type, command_id ,result_fang, commands[0])
+            action_command_log = self.parsing(command_id ,result_fang, commands[0])
+            action_command_log = None
             return action_command_log
             ######################################################################################
         except Exception as e:
-            stringhelpers.err("MEGA ACTION PROCESS EACH COMMAND ERROR %s | THREAD %s" % (e, self.name))
+            stringhelpers.err("[DISCOVERY] MEGA ACTION PROCESS EACH COMMAND ERROR %s | THREAD %s" % (e, self.name))
             return None
         except ConnectionError as errConn:
-            stringhelpers.err("MEGA ACTION CONNECT API URL ERROR %s | THREAD %s" % (errConn, self.name))
+            stringhelpers.err("[DISCOVERY] MEGA ACTION CONNECT API URL ERROR %s | THREAD %s" % (errConn, self.name))
             return None
 
 
-    def parsing(self, command_type = 0, command_id = 0, result_fang = None, command_text = None):
+    def parsing(self, command_id = 0, result_fang = None, commandtext=None):
         final_result_output = []
-        output_result = dict()
+        output_result = dict(deviceid=self.deviceid)
+        output_result['rows'] = []
         key = str(command_id)
         output_result[key] = dict()
         output_result[key]['output'] = []
         try:
-            if command_type == 3: # alway using for ironman
-                data_command_output = None
-                if isinstance(self.data_command['output'], str):
-                    data_command_output = json.loads(self.data_command['output'])
-                else:
-                    data_command_output = self.data_command['output']
-                for output_item in data_command_output:
-                    start_by = output_item['start_by']
-                    end_by = output_item['end_by']
-                    if start_by == '' and end_by == '':
-                        result = {'value': '0','compare': True, 'command_type': str(command_type),
-                                  'command_id': str(command_id), 'command_text':command_text,
-                                  'console_log': result_fang}
-                        output_result[key]['output'].append(result)
-                        #output_result[key]['console_log'] = result_fang
-                        output_result[key]['final_output'] = True
-                    else:
-                        if end_by == 'end_row':
-                            end_by = '\r\n'
-                        _ret_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
 
-                        result = {'value': _ret_value, 'compare': True, 'command_type': str(command_type),
-                                  'command_id': str(command_id), 'command_text':command_text,
-                                  'console_log': result_fang}
-                        output_result[key]['output'].append(result)
-                        #output_result[key]['console_log'] = result_fang
-                        output_result[key]['final_output'] = True
-                return output_result
-            elif command_type == 2 or command_type == 1:
-                if isinstance(self.data_command['output'], str):
-                    data_command_output = json.loads(self.data_command['output'])
-                else:
-                    data_command_output = self.data_command['output']
-                for output_item in data_command_output:
-                    #if output_item['start_by'] is not '' and output_item['end_by'] is not '':
-                    try:
-                        start_by = output_item['start_by']
-                        end_by = output_item['end_by']
-                        standard_value = output_item['standard_value']
-                        compare = output_item['compare']
-                        if end_by == 'end_row':
-                            end_by = '\r\n'
-                        compare_value = stringhelpers.find_between(result_fang, start_by, end_by)
-                        if ((compare_value is not None) and (compare_value is not "")):
-                            compare_value = compare_value.strip()
-                        if compare_value is '' or compare_value is None:
-                            compare_value = result_fang
-                        #if compare_value is not None or compare_value is not '':
-                        if compare != "contains":
-                            compare_value = int(compare_value)
-                            standard_value = int(standard_value)
-                        retvalue_compare = func_compare(compare, standard_value, compare_value)
-                        if compare_value == '':
-                            result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare,
-                                      'command_type':str(command_type), 'command_id':str(command_id),
-                                      'command_text':command_text, 'console_log': result_fang} # if compare_value empty save raw data
-                        else:
-                            result = {'value': compare_value, 'compare': retvalue_compare,
-                                     'compare_operator': compare, 'command_type': str(command_type),
-                                     'command_id': str(command_id),
-                                     'command_text':command_text, 'console_log': result_fang}
-                        output_result[key]['output'].append(result)
-                        # save final result of each output
-                        final_result_output.append(retvalue_compare)
-                    except Exception as _error:
-                        _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _error, self.name)
-                        result = {'value': compare_value, 'compare': retvalue_compare, 'error': _strError,
-                                  'command_type': command_type, 'command_id': str(command_id),
-                                  'command_text':command_text, 'console_log': result_fang}
-                        output_result[key]['output'].append(result)
-                        output_result[key]['parsing_status'] = 'ERROR'
-                        stringhelpers.err(_strError)
-                        final_result_output.append(False)
+            arrayRow = stringhelpers.text_to_arrayrow(result_fang)
+            if commandtext == "show interface description":
+                array_process = []
+                array_header = []
+                arrayRow = list(filter(None, arrayRow))
+                is_next = False
+                for row in arrayRow:
+                    if '#' not in row:
 
+                        if is_next:
+                            rows_dict = dict()
+                            array_value = row.split()
+                            for index,name in enumerate(array_header):
+                                try:
+                                    rows_dict[name] = array_value[index]
+                                except:
+                                    rows_dict[name] = ''
+                            output_result['rows'].append(rows_dict)
 
-                # determine operator for final output
-                try:
-                    final_operator = []
-                    for x in self.data_command['final_output']:
-                        if x == '&' or x == '|':
-                            final_operator.append(x)
-                        else:
-                            pass
-
-                    # compare final output
-                    number_operator = 0
-                    first_value = None
-                    for x in final_result_output:
-                        if len(final_operator) > 0:
-                            if number_operator == 0:
-                                first_value = x
-                            else:
-                                first_value = func_compare(final_operator[number_operator - 1], first_value, x)
-                            number_operator = number_operator + 1
-
-                            if number_operator == len(final_result_output):
-                                output_result[key]['final_output'] = first_value
-                        else:
-                            output_result[key]['final_output'] = x
-                except Exception as _errorFinal:
-                    if len(final_result_output) > 0:
-                        output_result[key]['final_output'] = final_result_output[0]
-                    _strError = "\nMEGA ACTION CALCULATOR FINAL_OUTPUT  COMMAND_TYPE %d ERROR %s | THREAD %s" % (command_type, _errorFinal, self.name)
-                    stringhelpers.err(_strError)
+                        if ('Interface' in row) and ('Protocol' in row): # phan loai row header
+                            array_header = row.split()
+                            is_next = True
 
 
 
-                return output_result
+            elif commandtext == "show lldp neighbor":
+                array_process = []
+                array_header = []
+                arrayRow = list(filter(None, arrayRow))
+                is_next = False
+                for row in arrayRow:
+                    if '#' not in row:
+
+                        if is_next:
+                            rows_dict = dict()
+                            array_value = row.split()
+                            for index, name in enumerate(array_header):
+                                try:
+                                    rows_dict[name] = array_value[index]
+                                except:
+                                    rows_dict[name] = ''
+                            output_result['rows'].append(rows_dict)
+
+                        if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
+                            array_header = row.split()
+                            is_next = True
+            else:
+                _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (self.name, commandtext)
+                stringhelpers.err(_strError)
+
+
+            return output_result
         except Exception as _errorException:
             output_result[key]['parsing_status'] = 'ERROR'
-            _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _errorException, self.name)
+            _strError = "[DISCOVERY] MEGA ACTION PARSING %d ERROR %s | THREAD %s" % (_errorException, self.name)
             stringhelpers.err(_strError)
             return  output_result
 
