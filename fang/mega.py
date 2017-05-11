@@ -84,15 +84,15 @@ class MegaManager(threading.Thread):
                 if len(_list_templates_descovery) > 0:
                     for x in _list_templates_descovery:
                         key_template = 'template_discovery_%d' % (x['template_id'])
-                        if dict_template_discovery.get(key_template, None) is not None:
-                            pass
-                        else:
-                            dict_template_discovery[key_template] = key_template
-                            mega_template_discovery = MegaDiscovery("Thread-Discovery-Template-%d" % (x['template_id']), x, dict_template_discovery)
-                            mega_template_discovery.start()
+                        #if dict_template_discovery.get(key_template, None) is not None:
+                        #    pass
+                        #else:
+                        dict_template_discovery[key_template] = key_template
+                        mega_template_discovery = MegaDiscovery("Thread-Discovery-Template-%d" % (x['template_id']), x, dict_template_discovery)
+                        mega_template_discovery.start()
                     pass
                 # ---------------------------------------------------------------------------------------------------------
-                time.sleep(1000)
+                time.sleep(90)
 
 
 

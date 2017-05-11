@@ -709,9 +709,6 @@ class Action(threading.Thread):
                             array_header = row.split()
                             array_header = list(filter(None, array_header))
                             is_next = True
-
-
-
             elif commandtext == "show lldp neighbor":
                 array_process = []
                 array_header = []

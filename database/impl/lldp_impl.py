@@ -27,7 +27,7 @@ class LLDPImpl():
         remote_interface = kwargs['remote_interface']
         local_interface = kwargs['local_interface']
         remote_device = kwargs['remote_device']
-        remote_interface_id = kwargs['remote_interface_id']
+        #remote_interface_id = kwargs['remote_interface_id']
         s = LLDP.objects(interface_id=interface_id).first()
         s.data = kwargs['data']
         s.remote_interface = remote_interface
