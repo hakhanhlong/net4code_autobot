@@ -31,7 +31,7 @@ class MegaManager(threading.Thread):
                 stringhelpers.print_bold("Archieving info MEGA number: %d" % self.counter)
 
                 #--------------- MEGA RUN COMMAND TEST -----------------------------------------------------------------
-                '''_request.url = self.requestURL.MEGA_URL_LIST_COMMAND_UNTESTED
+                _request.url = self.requestURL.MEGA_URL_LIST_COMMAND_UNTESTED
                 _list_commands = _request.get().json()
                 if len(_list_commands) > 0:
                     for x in _list_commands:
@@ -42,11 +42,11 @@ class MegaManager(threading.Thread):
                             dict_command[key_command] = key_command
                             mega_command = MegaCommand("Thread-Command-%d" % (x['command_id']), x, dict_command)
                             mega_command.start()
-                time.sleep(300)'''
+                time.sleep(3)
                 #-------------------------------------------------------------------------------------------------------
 
                 #-------------- MEGA RUN ACTION TEST -------------------------------------------------------------------
-                '''_request.url = self.requestURL.MEGA_URL_LIST_ACTION_UNTESTED
+                _request.url = self.requestURL.MEGA_URL_LIST_ACTION_UNTESTED
                 _list_actions = _request.get().json()
                 if len(_list_actions) > 0:
                     for x in _list_actions:
@@ -57,11 +57,11 @@ class MegaManager(threading.Thread):
                             dict_action[key_action] = key_action
                             mega_action = MegaAction("Thread-Action-%d" % (x['action_id']), x, dict_action)
                             mega_action.start()
-                time.sleep(1000)'''
+                time.sleep(3)
                 #-------------------------------------------------------------------------------------------------------
 
                 #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
-                '''_request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
+                _request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
                 _list_templates = _request.get().json()
                 #_list_templates = [_request.get().json()]
                 if len(_list_templates) > 0:
@@ -75,10 +75,10 @@ class MegaManager(threading.Thread):
                             mega_template.start()
                     pass
                 # ---------------------------------------------------------------------------------------------------------
-                time.sleep(1000)'''
+                time.sleep(3)
 
                 #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
-                _request.url = self.requestURL.MEGA_URL_TEMPLATE_DISCOVERY
+                '''_request.url = self.requestURL.MEGA_URL_TEMPLATE_DISCOVERY
                 #_list_templates = _request.get().json()
                 _list_templates_descovery = [_request.get().json()]
                 if len(_list_templates_descovery) > 0:
@@ -90,9 +90,9 @@ class MegaManager(threading.Thread):
                         dict_template_discovery[key_template] = key_template
                         mega_template_discovery = MegaDiscovery("Thread-Discovery-Template-%d" % (x['template_id']), x, dict_template_discovery)
                         mega_template_discovery.start()
-                    pass
+                    pass'''
                 # ---------------------------------------------------------------------------------------------------------
-                time.sleep(90)
+                #time.sleep(90)
 
 
 
