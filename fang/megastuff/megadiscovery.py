@@ -551,54 +551,7 @@ class Action(threading.Thread):
 
 
 
-            # ------------------------------------ process save log action --------------------------------------
 
-            '''self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_GETBY_ACTIONID % (
-                self.data_action['action_id'])
-            _request_action_log = self._request.get().json()
-            if len(_request_action_log) > 0:  # update action log
-
-                self.action_log['action_id'] = self.data_action['action_id']
-                self.action_log['device_id'] = self.data_action["test_device"]
-                try:
-                    self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_UPDATE % (
-                        _request_action_log[0]['log_id'])
-                    self._request.params = self.action_log
-                    self._request.put()
-                    stringhelpers.info(
-                        "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("UPDATE ACTIONS LOG SUCCESS", self.name))
-
-                    # ---------------update mega_status to action------------------------------------------------
-                    self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
-                    self._request.params = {'mega_status': 'tested'}
-                    self._request.put()
-                    key_action = 'action_%d' % (self.data_action['action_id'])
-                    del self.dict_action[key_action]
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.info("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-            else:  # insert action log
-                self.action_log['action_id'] = self.data_action['action_id']
-                self.action_log['device_id'] = self.data_action["test_device"]
-
-                try:
-                    self._request.url = self.requestURL.MEGA_URL_ACTIONLOG_CREATE
-                    self._request.params = self.action_log
-                    self._request.post()
-                    stringhelpers.info(
-                        "MEGA ACTIONS THREAD INFO: %s | THREAD %s" % ("INSERT ACTIONS LOG SUCCESS", self.name))
-                    # ---------------update mega_status to action------------------------------------------------
-                    self._request.url = self.requestURL.MEGA_URL_ACTION_UPDATE % (self.data_action['action_id'])
-                    self._request.params = {'mega_status': 'tested'}
-                    self._request.put()
-                    key_action = 'action_%d' % (self.data_action['action_id'])
-                    del self.dict_action[key_action]
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.err("MEGA ACTIONS THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-
-                    # ---------------------------------------------------------------------------------------------------'''
-            # ----------------------------------------------------------------------------------------------------------
 
         except Exception as e:
             stringhelpers.err("MEGA ACTIONS THREAD ERROR %s | THREAD %s" % (e, self.name))
@@ -656,17 +609,16 @@ class Action(threading.Thread):
         key = str(command_id)
         output_result[key] = dict()
         output_result[key]['output'] = []
+        array_interface_id = []
         try:
 
             arrayRow = stringhelpers.text_to_arrayrow(result_fang)
             if commandtext == "show interface description":
-                array_process = []
                 array_header = []
                 arrayRow = list(filter(None, arrayRow))
                 is_next = False
                 for row in arrayRow:
                     if '#' not in row:
-
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
@@ -681,7 +633,6 @@ class Action(threading.Thread):
                                 try:
                                     if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
                                         continue
-
                                     interfaceimpl = InterfaceImpl()
                                     intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
                                     if intf: #exist interfaces then update
@@ -690,6 +641,8 @@ class Action(threading.Thread):
                                             'interface_name': rows_dict['Interface'],
                                             'data': rows_dict
                                         }
+                                        array_interface_id.append(intf.interface_id)
+
                                         interfaceimpl.update(**interface_dict)
                                     else: #not exist then insert
                                         interface_dict = {
@@ -697,7 +650,8 @@ class Action(threading.Thread):
                                             'interface_name': rows_dict['Interface'],
                                             'data': rows_dict
                                         }
-                                        interfaceimpl.save(**interface_dict)
+                                        intf = interfaceimpl.save(**interface_dict)
+                                        array_interface_id.append(intf.interface_id)
                                 except Exception as ex:
                                     _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)
                                     stringhelpers.err(_strError)
@@ -752,7 +706,7 @@ class Action(threading.Thread):
                                 except Exception as ex:
                                     _strError = "[DISCOVERY][INSERT][UPDATE][LLDP]: %s | THREAD %s" % (ex, self.name)
                                     stringhelpers.err(_strError)
-                                # -------------------------------------------------------------------------------------------
+                                # --------------------------------------------------------------------------------------
 
                                 output_result['rows'].append(rows_dict)
 
@@ -764,6 +718,21 @@ class Action(threading.Thread):
                 _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
                 stringhelpers.err(_strError)
 
+            #-------------------------------process delete interfaces & lldp if device not exist interface and lldp-----
+
+            array_delete_interface = []
+            if len(array_interface_id) > 0:
+                interfaceimpl = InterfaceImpl()
+                list_interfaces = interfaceimpl.get_list_interface(self.deviceid)
+                if len(list_interfaces) > 0:
+                    for x in list_interfaces:
+                        if x.interface_id not in array_interface_id:
+                            array_delete_interface.append(x.interface_id)
+
+
+
+
+            #-----------------------------------------------------------------------------------------------------------
 
             return output_result
         except Exception as _errorException:
