@@ -47,9 +47,13 @@ class MegaTemplate(threading.Thread):
         else:
             stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
 
-        #test = self.result_templates
-
-        #sdasd = ""
+        # ---------------update mega_status to template------------------------------------------------
+        #self._request.url = self.requestURL.MEGA_URL_TEMPLATE_UPDATE % (self.data_template['template_id'])
+        #self._request.params = {'mega_status': 'tested'}
+        #self._request.put()
+        #key_template = 'template_%d' % (self.data_template['template_id'])
+        #del self.dict_template[key_template]
+        # --------------------------------------------------------------------------------------------
 
     def buildinfo_subtemplates(self):
         data_fang = dict(subtemplates=[])
