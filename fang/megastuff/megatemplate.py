@@ -31,8 +31,14 @@ class MegaTemplate(threading.Thread):
                 self.result_templates.append(dict_template)
             # ----------------------------------------------------------------------------------------------------------
 
+            # ---------------update mega_status to action------------------------------------------------
+            self._request.url = self.requestURL.MEGA_URL_TEMPLATE_UPDATE % (self.data_template['template_id'])
+            self._request.params = {'mega_status': 'tested'}
+            self._request.put()
+            key_template = 'template_%d' % (self.data_template['template_id'])
+            del self.dict_template[key_template]
 
-            self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_GETBY_TEMPLATEID % (
+            '''self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_GETBY_TEMPLATEID % (
                 self.data_template['template_id'])
             _request_template_log = self._request.get().json()
             if len(_request_template_log) > 0:  # update template log
@@ -71,18 +77,21 @@ class MegaTemplate(threading.Thread):
                 except ConnectionError as _conErr:
                     stringhelpers.err("MEGA TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
 
-                    # ---------------------------------------------------------------------------------------------------
+                    # ---------------------------------------------------------------------------------------------------'''
 
             #------------------------------- rollback ------------------------------------------------------------------
-            self.info_rollback = self.buildinfo_rollback()
-            if len(self.info_rollback) > 0:
-                self.result_templates = []
-                for fang in self.info_rollback:  # fang sub template
-                    sub_template_name = fang['sub_template_name']
-                    subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']))
-                    subtemplate_thread.start()
-                    dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
-                    self.result_templates.append(dict_template)
+            try:
+                self.info_rollback = self.buildinfo_rollback()
+                if len(self.info_rollback) > 0:
+                    self.result_templates = []
+                    for fang in self.info_rollback:  # fang sub template
+                        sub_template_name = fang['sub_template_name']
+                        subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']))
+                        subtemplate_thread.start()
+                        dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
+                        self.result_templates.append(dict_template)
+            except:
+                pass
 
             #-----------------------------------------------------------------------------------------------------------
 
