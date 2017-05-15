@@ -728,10 +728,7 @@ class Action(threading.Thread):
                     for x in list_interfaces:
                         if x.interface_id not in array_interface_id:
                             array_delete_interface.append(x.interface_id)
-
-
-
-
+            # dang xu ly
             #-----------------------------------------------------------------------------------------------------------
 
             return output_result
