@@ -62,8 +62,8 @@ class MegaManager(threading.Thread):
 
                 #-------------- MEGA RUN TEMPLATE TEST ----------------------------------------------------------------
                 _request.url = self.requestURL.MEGA_URL_LIST_TEMPLATE_UNTESTED
-                _list_templates = _request.get().json()
-                #_list_templates = [_request.get().json()]
+                #_list_templates = _request.get().json()
+                _list_templates = [_request.get().json()]
                 if len(_list_templates) > 0:
                     for x in _list_templates:
                         key_template = 'template_%d' % (x['template_id'])
