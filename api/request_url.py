@@ -29,6 +29,11 @@ class RequestURL:
         self.MEGA_URL_TEMPLATELOG_CREATE = os.environ.get('MEGA_URL_TEMPLATELOG_CREATE')
         self.MEGA_URL_TEMPLATELOG_UPDATE = os.environ.get('MEGA_URL_TEMPLATELOG_UPDATE')
         self.MEGA_URL_TEMPLATE_UPDATE = os.environ.get('MEGA_URL_TEMPLATE_UPDATE')
+        self.MEGA_URL_TEMPLATE_DETAIL = os.environ.get('MEGA_URL_TEMPLATE_DETAIL')
+
+
+        self.FLASK_URL_MOP = os.environ.get('FLASK_URL_MOP')
+        self.FLASK_URL_MOP_UPDATE = os.environ.get('FLASK_URL_MOP_UPDATE')
 
 
 
