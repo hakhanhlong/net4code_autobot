@@ -6,6 +6,7 @@ from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
 import json
 from datetime import datetime
+from time import time
 
 
 
@@ -21,18 +22,22 @@ class FlaskTemplate(threading.Thread):
         self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = []
         self.mop_id = mop_id
+        self.start_time = time()
 
 
-    def update_mop_status(self, status):
+
+
+    def update_mop_status(self, status, duration=None):
         # ---------------update mega_status to action------------------------------------------------
         self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE % (self.mop_id)
         dict_update = {'flash_status': status}
         if status == 'running':
             dict_update['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        if status == 'done':
+        if status == 'done' or status == 'rolledback':
             key_template = 'template_%d' % (self.mop_id)
             del self.dict_template[key_template]
             dict_update['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            dict_update['duration_time'] = '%.2f' % (duration - self.start_time)
 
         self._request.params = dict_update
         self._request.put()
@@ -43,7 +48,8 @@ class FlaskTemplate(threading.Thread):
             #-----------------------------------------------------------------------------------------------------------
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
-                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']))
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates,
+                                                 int(fang['mode']), self.mop_id)
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
                 self.result_templates.append(dict_template)
@@ -95,15 +101,21 @@ class FlaskTemplate(threading.Thread):
                 self.info_rollback = self.buildinfo_rollback()
                 if len(self.info_rollback) > 0:
                     self.result_templates = []
-                    for fang in self.info_rollback:  # fang sub template
-                        sub_template_name = fang['sub_template_name']
-                        subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']))
-                        subtemplate_thread.start()
-                        dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
-                        self.result_templates.append(dict_template)
-                    self.update_mop_status('error')
-                else:
-                    self.update_mop_status('done')
+                    try:
+                        for fang in self.info_rollback:  # fang sub template
+                            self.update_mop_status('rollingback')
+                            sub_template_name = fang['sub_template_name']
+                            subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']), self.mop_id)
+                            subtemplate_thread.start()
+                            dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
+                            self.result_templates.append(dict_template)
+                    except:
+                        pass
+
+                    if len(self.result_templates) > 0:
+                        self.update_mop_status('rolledback', time())
+                    else:
+                        self.update_mop_status('done', time())
             except:
                 pass
             #-----------------------------------------------------------------------------------------------------------
@@ -119,76 +131,85 @@ class FlaskTemplate(threading.Thread):
         key_maps = sorted(self.data_template['map'].keys()) #key number sub template
         run_mode = self.data_template["run_mode"]
 
-        for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
-            sub_template_number = _k
-            subtemplate = dict(devices=[])
-            subtemplate_data = self.data_template['sub_templates'][int(sub_template_number)] #data are list action
 
-            for k, v in run_devices:  # get list device id need fang and role of each device
-                # k = deviceid, v = role of device
-                device_role_name = v
-                count_step = 0
-                info_fang = {} #clear each add info
-                subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
+        try:
+            for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
+                sub_template_number = _k
+                subtemplate = dict(devices=[])
+                subtemplate_data = self.data_template['sub_templates'][int(sub_template_number)]  # data are list action
 
-                # ------------ get data chay mode parallel ---------------------------------------------------------
-                try:
-                    mode = int(run_mode.get(sub_template_number, 0))
-                    if mode == 1:
-                        subtemplate['mode'] = 1 # not run parallel
-                    elif mode == 2:
-                        subtemplate['mode'] = 2 # run parallel
-                except:
-                    pass
-                # --------------------------------------------------------------------------------------------------
+                for k, v in run_devices:  # get list device id need fang and role of each device
+                    # k = deviceid, v = role of device
+                    device_role_name = v
+                    count_step = 0
+                    info_fang = {}  # clear each add info
+                    subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
 
-                try:
-                    device_fang = dict(device_id=k, role=device_role_name)
-                    device_id = device_fang['device_id']
-                    self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
-                    device = self._request.get().json()
-                    device_fang['device_info'] = dict(
-                        port_mgmt=device['port_mgmt'],
-                        method=device['method'],
-                        vendor=device['vendor'],
-                        os=device['os'],
-                        username=device['username'],
-                        password=device['password'],
-                        ip_mgmt=device['ip_mgmt'],
-                        device_id=device['device_id']
-                    )
-                    device_fang['vendor_ios'] = "%s|%s" % (device['vendor'], device['os'])  # vendor+os = e.x: Cisco|ios-xr
-                    info_fang['device'] = device_fang
+                    # ------------ get data chay mode parallel ---------------------------------------------------------
+                    try:
+                        mode = int(run_mode.get(sub_template_number, 0))
+                        if mode == 1:
+                            subtemplate['mode'] = 1  # not run parallel
+                        elif mode == 2:
+                            subtemplate['mode'] = 2  # run parallel
+                    except:
+                        pass
+                    # --------------------------------------------------------------------------------------------------
 
-                    dict_action = dict(args=[], rollback_args=[])
-                    #-----------------action in each template ----------------------------------------------------------
-                    for action in subtemplate_data:  # list actions
-                        count_step = count_step + 1  # step
-                        dict_action[str(count_step)] = action
-                        try:
-                            # process argument for action ---------------------------------------------------------------
-                            dict_argument = self.data_template['run_args'].get(sub_template_number,None)  # level get by number template
-                            if dict_argument is not None:
-                                dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                    try:
+                        device_fang = dict(device_id=k, role=device_role_name)
+                        device_id = device_fang['device_id']
+                        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
+                        device = self._request.get().json()
+                        device_fang['device_info'] = dict(
+                            port_mgmt=device['port_mgmt'],
+                            method=device['method'],
+                            vendor=device['vendor'],
+                            os=device['os'],
+                            username=device['username'],
+                            password=device['password'],
+                            ip_mgmt=device['ip_mgmt'],
+                            device_id=device['device_id']
+                        )
+                        device_fang['vendor_ios'] = "%s|%s" % (
+                        device['vendor'], device['os'])  # vendor+os = e.x: Cisco|ios-xr
+                        info_fang['device'] = device_fang
+
+                        dict_action = dict(args=[], rollback_args=[])
+                        # -----------------action in each template ----------------------------------------------------------
+                        for action in subtemplate_data:  # list actions
+                            count_step = count_step + 1  # step
+                            dict_action[str(count_step)] = action
+                            try:
+                                # process argument for action ---------------------------------------------------------------
+                                dict_argument = self.data_template['run_args'].get(sub_template_number,
+                                                                                   None)  # level get by number template
                                 if dict_argument is not None:
-                                    dict_action['args'].append(dict_argument)
-                            # -------------------------------------------------------------------------------------------
-                            # process rollback argument for action ---------------------------------------------------------------
-                            dict_argument = self.data_template['rollback_args'].get(sub_template_number,None)  # level get by number template
-                            if dict_argument is not None:
-                                dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                    if dict_argument is not None:
+                                        dict_action['args'].append(dict_argument)
+                                # -------------------------------------------------------------------------------------------
+                                # process rollback argument for action ---------------------------------------------------------------
+                                dict_argument = self.data_template['rollback_args'].get(sub_template_number,
+                                                                                        None)  # level get by number template
                                 if dict_argument is not None:
-                                    dict_action['rollback_args'].append(dict_argument)  # cho nay can phai la list argument
-                        except:
-                            pass
+                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                    if dict_argument is not None:
+                                        dict_action['rollback_args'].append(
+                                            dict_argument)  # cho nay can phai la list argument
+                            except:
+                                pass
 
-                        #ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
-                    info_fang['actions'] = dict_action
-                    subtemplate['devices'].append(info_fang)
-                except Exception as _error:
-                    stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
-            if subtemplate is not None:
-                data_fang['subtemplates'].append(subtemplate)
+                                # ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
+                        info_fang['actions'] = dict_action
+                        subtemplate['devices'].append(info_fang)
+                    except Exception as _error:
+                        stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
+                if subtemplate is not None:
+                    data_fang['subtemplates'].append(subtemplate)
+        except:
+            pass
+
 
 
         return data_fang
@@ -226,7 +247,7 @@ class FlaskTemplate(threading.Thread):
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, mop_id=0):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -238,7 +259,65 @@ class SubTemplate(threading.Thread):
         self.is_check_run_finished = False
         self.result_templates = result_templates
         self.mode = mode
+        self.mop_id = mop_id
 
+
+    def update_log(self, mop_id=0, logs=None, is_rollback=False):
+        if is_rollback:
+            dict_result = dict(results=[])
+            self._request.url = self.requestURL.FLASK_URL_GET_MOP_LOGS % (mop_id)
+            _request_template_log = self._request.get().json()
+            if len(_request_template_log) > 0:  # update template log
+                try:
+                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
+                    self._request.params = _request_template_log['results'].append(logs)
+                    self._request.put()
+                    stringhelpers.info("FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("UPDATE TEMPLATE LOG SUCCESS", self.name))
+                    # --------------------------------------------------------------------------------------------
+                except ConnectionError as _conErr:
+                    stringhelpers.info("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+            else:  # insert action log
+
+                try:
+                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
+                    self._request.params = dict_result['results'].append(logs)
+                    self._request.post()
+                    stringhelpers.info(
+                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
+
+                except ConnectionError as _conErr:
+                    stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+
+            # ---------------------------------------------------------------------------------------------------
+        else:
+            dict_result = dict(rollback_results=[])
+            self._request.url = self.requestURL.FLASK_URL_GET_MOP_LOGS % (mop_id)
+            _request_template_log = self._request.get().json()
+            if len(_request_template_log) > 0:  # update template log
+                try:
+                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
+                    self._request.params = _request_template_log['rollback_results'].append(logs)
+                    self._request.put()
+                    stringhelpers.info(
+                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("UPDATE TEMPLATE LOG SUCCESS", self.name))
+                    # --------------------------------------------------------------------------------------------
+                except ConnectionError as _conErr:
+                    stringhelpers.info("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+            else:  # insert action log
+
+                try:
+                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
+                    self._request.params = dict_result['rollback_results'].append(logs)
+                    self._request.post()
+                    stringhelpers.info(
+                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
+
+                except ConnectionError as _conErr:
+                    stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+
+                    # ---------------------------------------------------------------------------------------------------
+
+        #pass
 
     def excecute(self, data_fang):
 
@@ -310,15 +389,17 @@ class SubTemplate(threading.Thread):
 
                                 thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                        param_rollback_action, vendor_ios,
-                                                       fac, self.is_rollback, log_output_file_name)
+                                                       fac, self.is_rollback, log_output_file_name, self.mop_id)
                                 thread_action.start()
                                 result = thread_action.join()
 
                                 result['action_id'] = action_id
                                 result['device_id'] = device['device_id']
                                 result['device_vendor_ios'] = vendor_ios
+                                result['mop_id'] = self.mop_id
                                 previous_final_output.append(result['final_result_action'])
                                 self.array_state_action.append(result)
+                                self.update_log(self.mop_id, result, False)
                             else:
                                 stringhelpers.err(
                                     "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
@@ -328,17 +409,18 @@ class SubTemplate(threading.Thread):
                         else:  # dependency == 0
                             thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                    param_rollback_action, vendor_ios,
-                                                   fac, self.is_rollback, log_output_file_name)
+                                                   fac, self.is_rollback, log_output_file_name, self.mop_id)
                             thread_action.start()
                             result = thread_action.join()
                             result['action_id'] = action_id
 
                             result['device_id'] = device['device_id']
                             result['device_vendor_ios'] = vendor_ios
-
+                            result['mop_id'] = self.mop_id
                             previous_final_output.append(result['final_result_action'])
 
                             self.array_state_action.append(result)
+                            self.update_log(self.mop_id, result, False)
 
                             if int(step) > 1:
                                 if int(result['final_result_action']) == int(_action.get('condition', 0)):
@@ -446,14 +528,16 @@ class SubTemplate(threading.Thread):
                         action_data = self._request.get().json()
                         thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                param_rollback_action, vendor_ios,
-                                               fac, self.is_rollback, log_output_file_name)
+                                               fac, self.is_rollback, log_output_file_name, self.mop_id)
                         thread_action.start()
                         result = thread_action.join()
                         result['action_id'] = action_id
                         result['device_id'] = device['device_id']
                         result['device_vendor_ios'] = vendor_ios
+                        result['mop_id'] = self.mop_id
                         previous_final_output.append(result['final_result_action'])
                         self.array_state_action.append(result)
+                        self.update_log(self.mop_id, result, True)
 
                     except:
                         stringhelpers.warn("[ROLLBACK][%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
@@ -589,7 +673,7 @@ class SubTemplate(threading.Thread):
 class Action(threading.Thread):
     """ Thread instance each process mega """
     def __init__(self, name, data_action = None, action_id = None, params_action=None, param_rollback_action=None,
-                 vendor_os=None, session_fang=None, is_rolback=False, file_log=None):
+                 vendor_os=None, session_fang=None, is_rolback=False, file_log=None, mop_id=0):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
@@ -609,6 +693,7 @@ class Action(threading.Thread):
 
         self.final_result = False
         self.dict_state_result = dict()
+        self.mop_id = mop_id
 
 
 

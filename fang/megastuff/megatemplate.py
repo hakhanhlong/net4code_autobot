@@ -106,80 +106,87 @@ class MegaTemplate(threading.Thread):
         key_maps = sorted(self.data_template['map'].keys()) #key number sub template
         run_mode = self.data_template["run_mode"]
 
-        for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
-            sub_template_number = _k
-            subtemplate = dict(devices=[])
-            dict_map_template = self.data_template['map'][sub_template_number]
-            subtemplate_data = self.data_template['sub_templates'][int(sub_template_number)] #data are list action
+        try:
+            for _k in key_maps:  # _k = number template, _v = dict role apply for sub template, sub template
+                sub_template_number = _k
+                subtemplate = dict(devices=[])
+                dict_map_template = self.data_template['map'][sub_template_number]
+                subtemplate_data = self.data_template['sub_templates'][int(sub_template_number)]  # data are list action
 
-            for k, v in run_devices:  # get list device id need fang and role of each device
-                # k = deviceid, v = role of device
-                device_role_name = v
-                role_exist =  dict_map_template.get(device_role_name, None)
-                count_step = 0
-                if role_exist: # compare role of device == role of template
-                    info_fang = {} #clear each add info
-                    subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
+                for k, v in run_devices:  # get list device id need fang and role of each device
+                    # k = deviceid, v = role of device
+                    device_role_name = v
+                    role_exist = dict_map_template.get(device_role_name, None)
+                    count_step = 0
+                    if role_exist:  # compare role of device == role of template
+                        info_fang = {}  # clear each add info
+                        subtemplate['sub_template_name'] = self.data_template['nameMap'][sub_template_number]
 
-                    # ------------ get data chay mode parallel ---------------------------------------------------------
-                    try:
-                        mode = int(run_mode.get(sub_template_number, 0))
-                        if mode == 1:
-                            subtemplate['mode'] = 1 # not run parallel
-                        elif mode == 2:
-                            subtemplate['mode'] = 2 # run parallel
-                    except:
-                        pass
-                    # --------------------------------------------------------------------------------------------------
+                        # ------------ get data chay mode parallel ---------------------------------------------------------
+                        try:
+                            mode = int(run_mode.get(sub_template_number, 0))
+                            if mode == 1:
+                                subtemplate['mode'] = 1  # not run parallel
+                            elif mode == 2:
+                                subtemplate['mode'] = 2  # run parallel
+                        except:
+                            pass
+                        # --------------------------------------------------------------------------------------------------
 
-                    try:
-                        device_fang = dict(device_id=k, role=device_role_name)
-                        device_id = device_fang['device_id']
-                        self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
-                        device = self._request.get().json()
-                        device_fang['device_info'] = dict(
-                            port_mgmt=device['port_mgmt'],
-                            method=device['method'],
-                            vendor=device['vendor'],
-                            os=device['os'],
-                            username=device['username'],
-                            password=device['password'],
-                            ip_mgmt=device['ip_mgmt'],
-                            device_id=device['device_id']
-                        )
-                        device_fang['vendor_ios'] = "%s|%s" % (device['vendor'], device['os'])  # vendor+os = e.x: Cisco|ios-xr
-                        info_fang['device'] = device_fang
+                        try:
+                            device_fang = dict(device_id=k, role=device_role_name)
+                            device_id = device_fang['device_id']
+                            self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (device_id)
+                            device = self._request.get().json()
+                            device_fang['device_info'] = dict(
+                                port_mgmt=device['port_mgmt'],
+                                method=device['method'],
+                                vendor=device['vendor'],
+                                os=device['os'],
+                                username=device['username'],
+                                password=device['password'],
+                                ip_mgmt=device['ip_mgmt'],
+                                device_id=device['device_id']
+                            )
+                            device_fang['vendor_ios'] = "%s|%s" % (
+                            device['vendor'], device['os'])  # vendor+os = e.x: Cisco|ios-xr
+                            info_fang['device'] = device_fang
 
-                        dict_action = dict(args=[], rollback_args=[])
-                        #-----------------action in each template ----------------------------------------------------------
-                        for action in subtemplate_data:  # list actions
-                            count_step = count_step + 1  # step
-                            dict_action[str(count_step)] = action
-                            try:
-                                # process argument for action ---------------------------------------------------------------
-                                dict_argument = self.data_template['run_args'].get(sub_template_number,None)  # level get by number template
-                                if dict_argument is not None:
-                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                            dict_action = dict(args=[], rollback_args=[])
+                            # -----------------action in each template ----------------------------------------------------------
+                            for action in subtemplate_data:  # list actions
+                                count_step = count_step + 1  # step
+                                dict_action[str(count_step)] = action
+                                try:
+                                    # process argument for action ---------------------------------------------------------------
+                                    dict_argument = self.data_template['run_args'].get(sub_template_number,
+                                                                                       None)  # level get by number template
                                     if dict_argument is not None:
-                                        dict_action['args'].append(dict_argument)
-                                # -------------------------------------------------------------------------------------------
-                                # process rollback argument for action ---------------------------------------------------------------
-                                dict_argument = self.data_template['rollback_args'].get(sub_template_number,None)  # level get by number template
-                                if dict_argument is not None:
-                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                        dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                        if dict_argument is not None:
+                                            dict_action['args'].append(dict_argument)
+                                    # -------------------------------------------------------------------------------------------
+                                    # process rollback argument for action ---------------------------------------------------------------
+                                    dict_argument = self.data_template['rollback_args'].get(sub_template_number,
+                                                                                            None)  # level get by number template
                                     if dict_argument is not None:
-                                        dict_action['rollback_args'].append(dict_argument)  # cho nay can phai la list argument
-                            except:
-                                pass
+                                        dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
+                                        if dict_argument is not None:
+                                            dict_action['rollback_args'].append(
+                                                dict_argument)  # cho nay can phai la list argument
+                                except:
+                                    pass
 
-                            #ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
-                        info_fang['actions'] = dict_action
-                        subtemplate['devices'].append(info_fang)
-                    except Exception as _error:
-                        stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
-            if subtemplate is not None:
-                data_fang['subtemplates'].append(subtemplate)
+                                    # ll_actions.append(dict_action)  # can xem lai co nen dung double linked list ko
+                            info_fang['actions'] = dict_action
+                            subtemplate['devices'].append(info_fang)
+                        except Exception as _error:
+                            stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
+                if subtemplate is not None:
+                    data_fang['subtemplates'].append(subtemplate)
 
+        except:
+            pass
 
         return data_fang
 

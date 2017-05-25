@@ -58,7 +58,6 @@ class FlaskManager(threading.Thread):
                             flask_template.start()
 
 
-                    pass
                 # ---------------------------------------------------------------------------------------------------------
                 time.sleep(1000)
 

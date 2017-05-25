@@ -35,6 +35,9 @@ class RequestURL:
         self.FLASK_URL_MOP = os.environ.get('FLASK_URL_MOP')
         self.FLASK_URL_MOP_UPDATE = os.environ.get('FLASK_URL_MOP_UPDATE')
 
+        self.FLASK_URL_MOP_LOGS = os.environ.get('FLASK_URL_MOP_LOGS')
+        self.FLASK_URL_GET_MOP_LOGS = os.environ.get('FLASK_URL_GET_MOP_LOGS')
+
 
 
 
