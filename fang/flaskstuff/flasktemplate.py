@@ -262,60 +262,37 @@ class SubTemplate(threading.Thread):
         self.mop_id = mop_id
 
 
-    def update_log(self, mop_id=0, logs=None, is_rollback=False):
-        if is_rollback:
+    def update_log(self, logs=None, is_rollback=False):
+        if is_rollback == False:
             dict_result = dict(results=[])
-            self._request.url = self.requestURL.FLASK_URL_GET_MOP_LOGS % (mop_id)
-            _request_template_log = self._request.get().json()
-            if len(_request_template_log) > 0:  # update template log
-                try:
-                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
-                    self._request.params = _request_template_log['results'].append(logs)
-                    self._request.put()
-                    stringhelpers.info("FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("UPDATE TEMPLATE LOG SUCCESS", self.name))
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.info("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-            else:  # insert action log
+            try:
+                self._request.url = self.requestURL.FLASK_URL_MOP_LOGS
+                dict_result['mop_id'] = self.mop_id
+                dict_result['results'].append(logs)
+                self._request.params = dict_result
+                self._request.post()
+                stringhelpers.info(
+                    "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
 
-                try:
-                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
-                    self._request.params = dict_result['results'].append(logs)
-                    self._request.post()
-                    stringhelpers.info(
-                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
+            except ConnectionError as _conErr:
+                stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
 
-                except ConnectionError as _conErr:
-                    stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
+
 
             # ---------------------------------------------------------------------------------------------------
         else:
             dict_result = dict(rollback_results=[])
-            self._request.url = self.requestURL.FLASK_URL_GET_MOP_LOGS % (mop_id)
-            _request_template_log = self._request.get().json()
-            if len(_request_template_log) > 0:  # update template log
-                try:
-                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
-                    self._request.params = _request_template_log['rollback_results'].append(logs)
-                    self._request.put()
-                    stringhelpers.info(
-                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("UPDATE TEMPLATE LOG SUCCESS", self.name))
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.info("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-            else:  # insert action log
+            try:
+                self._request.url = self.requestURL.FLASK_URL_MOP_LOGS
+                dict_result['mop_id'] = self.mop_id
+                dict_result['rollback_results'].append(logs)
+                self._request.params = dict_result
+                self._request.post()
+                stringhelpers.info(
+                    "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
 
-                try:
-                    self._request.url = self.requestURL.FLASK_URL_MOP_UPDATE
-                    self._request.params = dict_result['rollback_results'].append(logs)
-                    self._request.post()
-                    stringhelpers.info(
-                        "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
-
-                except ConnectionError as _conErr:
-                    stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-
-                    # ---------------------------------------------------------------------------------------------------
+            except ConnectionError as _conErr:
+                stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
 
         #pass
 
@@ -396,10 +373,10 @@ class SubTemplate(threading.Thread):
                                 result['action_id'] = action_id
                                 result['device_id'] = device['device_id']
                                 result['device_vendor_ios'] = vendor_ios
-                                result['mop_id'] = self.mop_id
+                                result['subtemplate_name'] = self.name
                                 previous_final_output.append(result['final_result_action'])
                                 self.array_state_action.append(result)
-                                self.update_log(self.mop_id, result, False)
+                                self.update_log(result, False)
                             else:
                                 stringhelpers.err(
                                     "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
@@ -416,11 +393,11 @@ class SubTemplate(threading.Thread):
 
                             result['device_id'] = device['device_id']
                             result['device_vendor_ios'] = vendor_ios
-                            result['mop_id'] = self.mop_id
+                            result['subtemplate_name'] = self.name
                             previous_final_output.append(result['final_result_action'])
 
                             self.array_state_action.append(result)
-                            self.update_log(self.mop_id, result, False)
+                            self.update_log(result, False)
 
                             if int(step) > 1:
                                 if int(result['final_result_action']) == int(_action.get('condition', 0)):
@@ -534,10 +511,10 @@ class SubTemplate(threading.Thread):
                         result['action_id'] = action_id
                         result['device_id'] = device['device_id']
                         result['device_vendor_ios'] = vendor_ios
-                        result['mop_id'] = self.mop_id
+                        result['subtemplate_name'] = self.name
                         previous_final_output.append(result['final_result_action'])
                         self.array_state_action.append(result)
-                        self.update_log(self.mop_id, result, True)
+                        self.update_log(result, True)
 
                     except:
                         stringhelpers.warn("[ROLLBACK][%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
