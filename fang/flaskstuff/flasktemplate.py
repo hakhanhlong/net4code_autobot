@@ -55,48 +55,6 @@ class FlaskTemplate(threading.Thread):
                 self.result_templates.append(dict_template)
             # ----------------------------------------------------------------------------------------------------------
 
-
-
-            '''self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_GETBY_TEMPLATEID % (
-                self.data_template['template_id'])
-            _request_template_log = self._request.get().json()
-            if len(_request_template_log) > 0:  # update template log
-                try:
-                    self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_UPDATE % (_request_template_log[0]['log_id'])
-                    self._request.params = dict(result=self.result_templates)
-                    self._request.put()
-                    stringhelpers.info("MEGA TEMPLATE THREAD INFO: %s | THREAD %s" % ("UPDATE TEMPLATE LOG SUCCESS", self.name))
-
-                    # ---------------update mega_status to action------------------------------------------------
-                    self._request.url = self.requestURL.MEGA_URL_TEMPLATE_UPDATE % (self.data_template['template_id'])
-                    self._request.params = {'mega_status': 'tested'}
-                    self._request.put()
-                    key_template = 'template_%d' % (self.mop_id)
-                    del self.dict_template[key_template]
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.info("MEGA TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-            else:  # insert action log
-
-                try:
-                    self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_CREATE
-                    self._request.params = dict(result=self.result_templates)
-                    self._request.post()
-                    stringhelpers.info(
-                        "MEGA TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
-                    # ---------------update mega_status to action------------------------------------------------
-                    self._request.url = self.requestURL.MEGA_URL_TEMPLATELOG_UPDATE % (self.data_template['template_id'])
-                    self._request.params = {'mega_status': 'tested'}
-                    self._request.put()
-                    key_template = 'template_%d' % (self.mop_id)
-                    del self.dict_template[key_template]
-                    # --------------------------------------------------------------------------------------------
-                except ConnectionError as _conErr:
-                    stringhelpers.err("MEGA TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))'''
-
-                    # ---------------------------------------------------------------------------------------------------
-
-            #------------------------------- rollback ------------------------------------------------------------------
             try:
                 self.info_rollback = self.buildinfo_rollback()
                 if len(self.info_rollback) > 0:
