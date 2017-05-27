@@ -45,14 +45,17 @@ class FlaskTemplate(threading.Thread):
     def run(self):
         if self.info_fang is not None:
             self.update_mop_status('running')
+            count = 0
             #-----------------------------------------------------------------------------------------------------------
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
+                sub_template_number = count
                 subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates,
-                                                 int(fang['mode']), self.mop_id)
+                                                 int(fang['mode']), self.mop_id, sub_template_number)
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
                 self.result_templates.append(dict_template)
+                count = count + 1
             # ----------------------------------------------------------------------------------------------------------
 
             try:
@@ -60,13 +63,17 @@ class FlaskTemplate(threading.Thread):
                 if len(self.info_rollback) > 0:
                     self.result_templates = []
                     try:
+                        count = len(self.info_rollback)
                         for fang in self.info_rollback:  # fang sub template
                             self.update_mop_status('rollingback')
                             sub_template_name = fang['sub_template_name']
-                            subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates, int(fang['mode']), self.mop_id)
+                            sub_template_number = count
+                            subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates,
+                                                             int(fang['mode']), self.mop_id, sub_template_number)
                             subtemplate_thread.start()
                             dict_template = dict(sub_template_name=sub_template_name, state=subtemplate_thread.join(),fang=fang, mode=int(fang['mode']))
                             self.result_templates.append(dict_template)
+                            count = count - 1
                     except:
                         pass
 
@@ -78,7 +85,7 @@ class FlaskTemplate(threading.Thread):
                 pass
             #-----------------------------------------------------------------------------------------------------------
         else:
-            stringhelpers.warn("[%s] MEGA TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
+            stringhelpers.warn("[%s] FLASK TEMPLATE NOT DATA TO FANG\r\n" % (self.name))
             self.update_mop_status('error')
 
 
@@ -162,7 +169,7 @@ class FlaskTemplate(threading.Thread):
                         info_fang['actions'] = dict_action
                         subtemplate['devices'].append(info_fang)
                     except Exception as _error:
-                        stringhelpers.err("MEGA TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
+                        stringhelpers.err("FLASK TEMPLATE BUILD buildinfo_subtemplates ERROR %s\n\r" % (_error))
                 if subtemplate is not None:
                     data_fang['subtemplates'].append(subtemplate)
         except:
@@ -205,7 +212,7 @@ class FlaskTemplate(threading.Thread):
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, mop_id=0):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, mop_id=0, sub_template_number=0):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -218,33 +225,77 @@ class SubTemplate(threading.Thread):
         self.result_templates = result_templates
         self.mode = mode
         self.mop_id = mop_id
+        self.sub_template_number = sub_template_number
 
 
-    def update_log(self, logs=None, is_rollback=False):
+    def update_log(self, logs=None, is_rollback=False, device_id=0, action_id=0):
         if is_rollback == False:
-            dict_result = dict(results=[])
+            dict_log_result = dict()
             try:
                 self._request.url = self.requestURL.FLASK_URL_MOP_LOGS
-                dict_result['mop_id'] = self.mop_id
-                dict_result['results'].append(logs)
-                self._request.params = dict_result
+                dict_log_result['mop_id'] = self.mop_id
+
+                _dict_data = logs['action_log']['result']['outputs'][str(logs['device_vendor_ios'])]['config']
+                # process remove key dict is command_id
+                for item in _dict_data: #for each on array
+                    try:
+                        for k, v in item.items():
+                            try:
+                                if int(k) > 0:
+                                    for sub_k, sub_v in v.items():
+                                        item[str(sub_k)] = sub_v
+                                    del item[k]
+                            except:
+                                pass
+                    except:
+                        pass
+                # ------------------------------------------------------------------------------
+
+                dict_log_result['action_log'] = [v for v in _dict_data]
+                dict_log_result['device_id'] = device_id
+                dict_log_result['action_id'] = action_id
+                dict_log_result['sub_template_name'] = self.name
+                dict_log_result['sub_template_number'] = self.sub_template_number
+                dict_log_result['mode'] = 'config'
+
+
+                self._request.params = dict_log_result
                 self._request.post()
                 stringhelpers.info(
                     "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
 
             except ConnectionError as _conErr:
                 stringhelpers.err("FLASK TEMPLATE THREAD ERROR: %s | THREAD %s" % (_conErr, self.name))
-
-
-
             # ---------------------------------------------------------------------------------------------------
         else:
-            dict_result = dict(rollback_results=[])
+            dict_log_result = dict()
             try:
                 self._request.url = self.requestURL.FLASK_URL_MOP_LOGS
-                dict_result['mop_id'] = self.mop_id
-                dict_result['rollback_results'].append(logs)
-                self._request.params = dict_result
+                dict_log_result['mop_id'] = self.mop_id
+
+                _dict_data = logs['action_rollback_log']['result']['outputs'][str(logs['device_vendor_ios'])]['rollback']
+                # process remove key dict is command_id
+                for item in _dict_data:  # for each on array
+                    try:
+                        for k, v in item.items():
+                            try:
+                                if int(k) > 0:
+                                    for sub_k, sub_v in v.items():
+                                        item[str(sub_k)] = sub_v
+                                    del item[k]
+                            except:
+                                pass
+                    except:
+                        pass
+                # ------------------------------------------------------------------------------
+                dict_log_result['action_log'] = [v for v in _dict_data]
+
+                dict_log_result['device_id'] = device_id
+                dict_log_result['action_id'] = action_id
+                dict_log_result['sub_template_name'] = self.name
+                dict_log_result['sub_template_number'] = self.sub_template_number
+                dict_log_result['mode'] = 'rollback'
+                self._request.params = dict_log_result
                 self._request.post()
                 stringhelpers.info(
                     "FLASK TEMPLATE THREAD INFO: %s | THREAD %s" % ("INSERT TEMPLATE LOG SUCCESS", self.name))
@@ -276,7 +327,7 @@ class SubTemplate(threading.Thread):
             'port': port,
             'timeout': 300
         }
-        print("MEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
+        print("FLASK SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
         fac = FactoryConnector(**parameters)
         log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
         fac = fac.execute_keep_alive(loginfo=log_output_file_name)
@@ -331,13 +382,13 @@ class SubTemplate(threading.Thread):
                                 result['action_id'] = action_id
                                 result['device_id'] = device['device_id']
                                 result['device_vendor_ios'] = vendor_ios
-                                result['subtemplate_name'] = self.name
+
                                 previous_final_output.append(result['final_result_action'])
                                 self.array_state_action.append(result)
-                                self.update_log(result, False)
+                                self.update_log(result, False, device['device_id'], action_id)
                             else:
                                 stringhelpers.err(
-                                    "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
+                                    "FLASK ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (
                                     step, dependStep, self.name))
                                 previous_final_output.append(False)
                                 continue
@@ -348,14 +399,13 @@ class SubTemplate(threading.Thread):
                             thread_action.start()
                             result = thread_action.join()
                             result['action_id'] = action_id
-
                             result['device_id'] = device['device_id']
                             result['device_vendor_ios'] = vendor_ios
-                            result['subtemplate_name'] = self.name
+
                             previous_final_output.append(result['final_result_action'])
 
                             self.array_state_action.append(result)
-                            self.update_log(result, False)
+                            self.update_log(result, False, device['device_id'], action_id)
 
                             if int(step) > 1:
                                 if int(result['final_result_action']) == int(_action.get('condition', 0)):
@@ -365,7 +415,7 @@ class SubTemplate(threading.Thread):
                                     compare_final_output = []
                                     break
                     except:
-                        stringhelpers.warn("[%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
+                        stringhelpers.warn("[%s] FLASK TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
                 else:  # last command in actions check point
                     dependency = int(_action['dependency'])
                     try:
@@ -419,7 +469,7 @@ class SubTemplate(threading.Thread):
             'port': port,
             'timeout': 300
         }
-        print("MEGA SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
+        print("FLASK SUBTEMPLATE FANG DEVICE: host=%s, port=%s, devicetype=%s \n" % (parameters['host'], parameters['port'], parameters['device_type']))
         fac = FactoryConnector(**parameters)
         log_output_file_name = "%s.log" % (stringhelpers.generate_random_keystring(10))
         fac = fac.execute_keep_alive(loginfo=log_output_file_name)
@@ -469,13 +519,13 @@ class SubTemplate(threading.Thread):
                         result['action_id'] = action_id
                         result['device_id'] = device['device_id']
                         result['device_vendor_ios'] = vendor_ios
-                        result['subtemplate_name'] = self.name
+
                         previous_final_output.append(result['final_result_action'])
                         self.array_state_action.append(result)
-                        self.update_log(result, True)
+                        self.update_log(result, True, device['device_id'], action_id)
 
                     except:
-                        stringhelpers.warn("[ROLLBACK][%s] MEGA TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
+                        stringhelpers.warn("[ROLLBACK][%s] FLASK TEMPLATE REQUEST DATA ACTION %s FAIL\r\n" % (self.name, action_id))
                 else:  # last command in actions check point
                     pass
 
@@ -933,10 +983,15 @@ class Action(threading.Thread):
                     start_by = output_item['start_by']
                     end_by = output_item['end_by']
                     if start_by == '' and end_by == '':
-                        result = {'value': '0','compare': True, 'command_type': str(command_type),
-                                  'command_id': str(command_id), 'command_text':command_text,
-                                  'console_log': result_fang}
+
+                        result = {'value': '0','compare': True}
+                        output_result['console_log'] = result_fang
+                        output_result['command_type'] = str(command_type)
+                        output_result['command_text'] = command_text
+                        output_result['command_id'] =  str(command_id)
+
                         output_result[key]['output'].append(result)
+
                         #output_result[key]['console_log'] = result_fang
                         output_result[key]['final_output'] = True
                     else:
@@ -944,9 +999,13 @@ class Action(threading.Thread):
                             end_by = '\r\n'
                         _ret_value = stringhelpers.find_between(result_fang, start_by, end_by).strip()
 
-                        result = {'value': _ret_value, 'compare': True, 'command_type': str(command_type),
-                                  'command_id': str(command_id), 'command_text':command_text,
-                                  'console_log': result_fang}
+                        result = {'value': '0', 'compare': True}
+                        output_result['console_log'] = result_fang
+                        output_result['command_type'] = str(command_type)
+                        output_result['command_text'] = command_text
+                        output_result['command_id'] = str(command_id)
+
+
                         output_result[key]['output'].append(result)
                         #output_result[key]['console_log'] = result_fang
                         output_result[key]['final_output'] = True
@@ -976,22 +1035,34 @@ class Action(threading.Thread):
                             standard_value = int(standard_value)
                         retvalue_compare = func_compare(compare, standard_value, compare_value)
                         if compare_value == '':
-                            result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare,
-                                      'command_type':str(command_type), 'command_id':str(command_id),
-                                      'command_text':command_text, 'console_log': result_fang} # if compare_value empty save raw data
+                            # if compare_value empty save raw data
+                            result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare}
+                            output_result['console_log'] = result_fang
+                            output_result['command_type'] = str(command_type)
+                            output_result['command_text'] = command_text
+                            output_result['command_id'] = str(command_id)
+
+
                         else:
-                            result = {'value': compare_value, 'compare': retvalue_compare,
-                                     'compare_operator': compare, 'command_type': str(command_type),
-                                     'command_id': str(command_id),
-                                     'command_text':command_text, 'console_log': result_fang}
+                            result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare}
+                            output_result['console_log'] = result_fang
+                            output_result['command_type'] = str(command_type)
+                            output_result['command_text'] = command_text
+                            output_result['command_id'] = str(command_id)
+
                         output_result[key]['output'].append(result)
                         # save final result of each output
                         final_result_output.append(retvalue_compare)
                     except Exception as _error:
                         _strError = "MEGA ACTION PARSING COMMAND TYPE %d ERROR %s | THREAD %s" % (command_type, _error, self.name)
-                        result = {'value': compare_value, 'compare': retvalue_compare, 'error': _strError,
-                                  'command_type': command_type, 'command_id': str(command_id),
-                                  'command_text':command_text, 'console_log': result_fang}
+
+                        result = {'value': compare_value, 'compare': retvalue_compare, 'compare_operator': compare}
+                        output_result['console_log'] = result_fang
+                        output_result['command_type'] = str(command_type)
+                        output_result['command_text'] = command_text
+                        output_result['command_id'] = str(command_id)
+
+
                         output_result[key]['output'].append(result)
                         output_result[key]['parsing_status'] = 'ERROR'
                         stringhelpers.err(_strError)
