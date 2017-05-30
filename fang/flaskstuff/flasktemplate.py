@@ -186,6 +186,7 @@ class FlaskTemplate(threading.Thread):
         if len(self.result_templates) > 0:
             reversed_result = self.result_templates[::-1]
             #reversed_result = self.result_templates
+            sub_template_number = len(reversed_result) - 1
             for item in reversed_result:
                 dict_template_rollback = dict(devices=[])
                 count = 0
@@ -195,6 +196,7 @@ class FlaskTemplate(threading.Thread):
                         if device_id in array_keep_device_rollback:
                             dict_template_rollback['sub_template_name'] = item['sub_template_name']
                             dict_template_rollback['mode'] = item['mode']
+                            dict_template_rollback['sub_template_number'] = sub_template_number
                             for device in item['fang']['devices']:
                                 dict_template_rollback['devices'].append(device)
                     if v['final_sub_template'] == False:
@@ -202,10 +204,12 @@ class FlaskTemplate(threading.Thread):
                         if count == 0:
                             dict_template_rollback['sub_template_name'] = item['sub_template_name']
                             dict_template_rollback['mode'] = item['mode']
+                            dict_template_rollback['sub_template_number'] = sub_template_number
                             for device in item['fang']['devices']:
                                 dict_template_rollback['devices'].append(device)
                             array_keep_device_rollback.append(device_id)
                             count = 1
+                sub_template_number = sub_template_number - 1
                 array_data_rollback.append(dict_template_rollback)
         return array_data_rollback
 
@@ -254,6 +258,7 @@ class SubTemplate(threading.Thread):
                 dict_log_result['action_log'] = [v for v in _dict_data]
                 dict_log_result['device_id'] = device_id
                 dict_log_result['action_id'] = action_id
+                dict_log_result['final_result_action'] = logs['final_result_action']
                 dict_log_result['sub_template_name'] = self.name
                 dict_log_result['sub_template_number'] = self.sub_template_number
                 dict_log_result['mode'] = 'config'
@@ -294,6 +299,7 @@ class SubTemplate(threading.Thread):
                 dict_log_result['action_id'] = action_id
                 dict_log_result['sub_template_name'] = self.name
                 dict_log_result['sub_template_number'] = self.sub_template_number
+                dict_log_result['final_result_action'] = logs['final_result_action']
                 dict_log_result['mode'] = 'rollback'
                 self._request.params = dict_log_result
                 self._request.post()
@@ -398,6 +404,7 @@ class SubTemplate(threading.Thread):
                                                    fac, self.is_rollback, log_output_file_name, self.mop_id)
                             thread_action.start()
                             result = thread_action.join()
+
                             result['action_id'] = action_id
                             result['device_id'] = device['device_id']
                             result['device_vendor_ios'] = vendor_ios
