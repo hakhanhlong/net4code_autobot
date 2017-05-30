@@ -67,7 +67,7 @@ class FlaskTemplate(threading.Thread):
                         for fang in self.info_rollback:  # fang sub template
                             self.update_mop_status('rollingback')
                             sub_template_name = fang['sub_template_name']
-                            sub_template_number = count
+                            sub_template_number = fang['sub_template_number']
                             subtemplate_thread = SubTemplate(sub_template_name, fang, True, self.result_templates,
                                                              int(fang['mode']), self.mop_id, sub_template_number)
                             subtemplate_thread.start()
