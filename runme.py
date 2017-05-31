@@ -2,7 +2,7 @@ from os.path import join, dirname
 from dotenv import load_dotenv
 from ultils import stringhelpers
 from fang.mega import MegaManager
-from fang.ironman import IronManManager
+from fang.ironman import IronManager
 from fang.flask import FlaskManager
 
 from mongoengine import connect
@@ -17,13 +17,13 @@ def main():
 
     stringhelpers.print_welcome()
     '''_mega_manager = MegaManager('MEGA-MANAGEMENT', False)
-_mega_manager.start()'''
+    _mega_manager.start()'''
 
-    _flask_manager = FlaskManager('FLASK-MANAGEMENT', False)
-    _flask_manager.start()
+    '''_flask_manager = FlaskManager('FLASK-MANAGEMENT', False)
+    _flask_manager.start()'''
 
-    '''_ironman_manager = IronManManager('IRONMAN-MANAGEMENT', False)
-    _ironman_manager.start()'''
+    _ironman_manager = IronManager('IRONMAN-MANAGEMENT', False)
+    _ironman_manager.start()
 
 
 
