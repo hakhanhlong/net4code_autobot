@@ -668,6 +668,7 @@ class Action(threading.Thread):
                 array_header = []
                 arrayRow = list(filter(None, arrayRow))
                 is_next = False
+                lenght_array_row = len(arrayRow)
                 for row in arrayRow:
                     if '#' not in row and 'Total entries displayed:' not in row:
                         if is_next:
@@ -697,7 +698,9 @@ class Action(threading.Thread):
                                             "remote_interface":rows_dict['PortID'],
                                             "local_interface":rows_dict['LocalIntf'],
                                             "remote_device": rows_dict['DeviceID'],
-                                            "data": rows_dict
+                                            "local_deviceid": self.deviceid,
+                                            "data": rows_dict,
+                                            'local_device': arrayRow[lenght_array_row-1].replace('#','').replace('>','').replace('$','')
                                         }
                                         if lldp: #update lldp
                                             lldpImpl.update(**lldp_dict)

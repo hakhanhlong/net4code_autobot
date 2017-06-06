@@ -2,19 +2,66 @@ import threading
 from ultils import stringhelpers
 from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
+from fang.ironstuff.irondiscovery import IronDiscovery
+import time
+from datetime import datetime
 
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
-    def __init__(self, is_stop = False, waiting_time=0):
+    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None):
+        threading.Thread.__init__(self)
+        self.name = name
+        self.mop_data = mop_data
+        self.template_data = template_data
+        self.dict_schedule = dict_schedule
         self.is_stop = is_stop
-        self.waiting_time = waiting_time
+        self.mechanism = mechanism
+        self.requestURL = RequestURL()
+        self._request = RequestHelpers()
+        self.is_waiting = True
 
     def run(self):
         try:
+            #---------------------------- waiting time for time start ------------------------------------------------
+            while self.is_waiting:
+                time_start = datetime.strptime(self.mop_data['time'], '%H:%M').time()
+                time_current = datetime.strptime("%d:%d"%(datetime.now().hour, datetime.now().minute), "%H:%M").time()
+
+                if time_current >= time_start:
+                    self.is_waiting = False
+            #---------------------------------------------------------------------------------------------------------
+
             while not self.is_stop:
-                pass
+                # -------------------- run device from mop -------------------------------------------
+                array_device_mop = self.mop_data['devices']
+                run_devices = {}
+                for item in array_device_mop:
+                    self._request.url = self.requestURL.URL_GET_DEVICE_DETAIL % (int(item)) # get device detail
+                    device = self._request.get().json()
+                    run_devices[str(item)] = device['role']
+
+                self.template_data['run_devices'] = run_devices
+
+                key_mop = 'main_schedule_%d' % (self.mop_data['schedule_id'])
+
+                irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']), self.template_data)
+                irondiscovery.start()
+                irondiscovery.join()
+
+                if self.mechanism == 'MANUAL':
+                    self.is_stop = True
+                    del self.dict_schedule[key_mop]
+                else:
+                    weekday = datetime.now().strftime('%A')
+                    if weekday not in list(self.mop_data['weekly']):
+                        del self.dict_schedule[key_mop]
+                        self.is_stop = True
+                    else:
+                        stringhelpers.info('[IRON][DISCOVERY][WAITING][%d s][%s]' % (int(self.mop_data['interval']), self.name))
+                        time.sleep(int(self.mop_data['interval']))
+
         except Exception as error:
-            pass
+            stringhelpers.err("[ERROR] %s %s" % (self.name, error))
 
 
