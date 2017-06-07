@@ -610,129 +610,156 @@ class Action(threading.Thread):
         output_result[key] = dict()
         output_result[key]['output'] = []
         array_interface_id = []
+        array_index_length = []
+        dict_index_header = dict()
         try:
 
             arrayRow = stringhelpers.text_to_arrayrow(result_fang)
-            if commandtext == "show interface description":
-                array_header = []
-                arrayRow = list(filter(None, arrayRow))
-                is_next = False
-                for row in arrayRow:
-                    if '#' not in row:
-                        if is_next:
-                            rows_dict = dict()
-                            array_value = row.split()
-                            if len(array_value) > 0:
-                                for index,name in enumerate(array_header):
-                                    try:
-                                        rows_dict[name] = array_value[index]
-                                    except:
-                                        rows_dict[name] = ''
+            string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
 
-                                #------------------- process insert/update/check database tablet interfaces ----------------
-                                try:
-                                    if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
-                                        continue
-                                    interfaceimpl = InterfaceImpl()
-                                    intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
-                                    if intf: #exist interfaces then update
-                                        interface_dict = {
-                                            'device_id': self.deviceid,
-                                            'interface_name': rows_dict['Interface'],
-                                            'data': rows_dict
-                                        }
-                                        array_interface_id.append(intf.interface_id)
+            if string_contain_header is not None:
+                if commandtext == "show interface description":
+                    array_header = []
+                    arrayRow = list(filter(None, arrayRow))
+                    is_next = False
+                    for row in arrayRow:
+                        if '#' not in row:
+                            if is_next:
+                                rows_dict = dict()
+                                array_value = row.split()
 
-                                        interfaceimpl.update(**interface_dict)
-                                    else: #not exist then insert
-                                        interface_dict = {
-                                            'device_id': self.deviceid,
-                                            'interface_name': rows_dict['Interface'],
-                                            'data': rows_dict
-                                        }
-                                        intf = interfaceimpl.save(**interface_dict)
-                                        array_interface_id.append(intf.interface_id)
-                                except Exception as ex:
-                                    _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)
-                                    stringhelpers.err(_strError)
-                                #-------------------------------------------------------------------------------------------
 
-                                output_result['rows'].append(rows_dict)
+                                #-------- get value follow colums ------------------------------------------------------
+                                for config_output in self.data_command['output']:
+                                    key = config_output['name'].lower()
+                                    start, end = dict_index_header[key]
+                                    value = row[start:end]
+                                #---------------------------------------------------------------------------------------
 
-                        if ('Interface' in row) and ('Protocol' in row): # phan loai row header
-                            array_header = row.split()
-                            array_header = list(filter(None, array_header))
-                            is_next = True
-            elif commandtext == "show lldp neighbor":
-                array_process = []
-                array_header = []
-                arrayRow = list(filter(None, arrayRow))
-                is_next = False
-                lenght_array_row = len(arrayRow)
-                for row in arrayRow:
-                    if '#' not in row and 'Total entries displayed:' not in row:
-                        if is_next:
-                            rows_dict = dict()
-                            array_value = row.split()
-                            if len(array_value) > 0:
-                                for index, name in enumerate(array_header):
-                                    if name is not None or name is not '':
+                                if len(array_value) > 0:
+                                    for index, name in enumerate(array_header):
                                         try:
-                                            rows_dict[name.replace(' ', '')] = array_value[index]
+                                            rows_dict[name] = array_value[index]
                                         except:
-                                            rows_dict[name.replace(' ', '')] = ''
+                                            rows_dict[name] = ''
 
-                                # ------------------- process insert/update/check database tablet interfaces ----------------
-                                try:
-                                    if rows_dict['DeviceID'] is None or rows_dict['LocalIntf'] == '':
-                                        continue
+                                    #------------------- process insert/update/check database tablet interfaces --------
+                                    try:
+                                        if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
+                                            continue
+                                        interfaceimpl = InterfaceImpl()
+                                        intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
+                                        if intf: #exist interfaces then update
+                                            interface_dict = {
+                                                'device_id': self.deviceid,
+                                                'interface_name': rows_dict['Interface'],
+                                                'data': rows_dict
+                                            }
+                                            array_interface_id.append(intf.interface_id)
 
-                                    interfaceimpl = InterfaceImpl()
-                                    intf = interfaceimpl.get_interface(self.deviceid, rows_dict['LocalIntf'])
-                                    if intf:  # exist interfaces then process lldp
-                                        interface_id = intf.interface_id
-                                        lldpImpl = LLDPImpl()
-                                        lldp = lldpImpl.get(interface_id)
-                                        lldp_dict = {
-                                            "interface_id":interface_id,
-                                            "remote_interface":rows_dict['PortID'],
-                                            "local_interface":rows_dict['LocalIntf'],
-                                            "remote_device": rows_dict['DeviceID'],
-                                            "local_deviceid": self.deviceid,
-                                            "data": rows_dict,
-                                            'local_device': arrayRow[lenght_array_row-1].replace('#','').replace('>','').replace('$','')
-                                        }
-                                        if lldp: #update lldp
-                                            lldpImpl.update(**lldp_dict)
-                                        else: #insert lldp
-                                            lldpImpl.save(**lldp_dict)
-                                except Exception as ex:
-                                    _strError = "[DISCOVERY][INSERT][UPDATE][LLDP]: %s | THREAD %s" % (ex, self.name)
-                                    stringhelpers.err(_strError)
-                                # --------------------------------------------------------------------------------------
+                                            interfaceimpl.update(**interface_dict)
+                                        else: #not exist then insert
+                                            interface_dict = {
+                                                'device_id': self.deviceid,
+                                                'interface_name': rows_dict['Interface'],
+                                                'data': rows_dict
+                                            }
+                                            intf = interfaceimpl.save(**interface_dict)
+                                            array_interface_id.append(intf.interface_id)
+                                    except Exception as ex:
+                                        _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)
+                                        stringhelpers.err(_strError)
+                                    #-------------------------------------------------------------------------------------------
 
-                                output_result['rows'].append(rows_dict)
+                                    output_result['rows'].append(rows_dict)
 
-                        if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
-                            array_header = row.split('  ')
-                            array_header = list(filter(None, array_header))
-                            is_next = True
-            else:
-                _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
-                stringhelpers.err(_strError)
+                            #if ('Interface' in row) and ('Protocol' in row): # phan loai row header
+                            if(string_contain_header in row):
+                                array_header = row.split()
+                                array_header = list(filter(None, array_header))
 
-            #-------------------------------process delete interfaces & lldp if device not exist interface and lldp-----
+                                #-------------- process index get value colum --------------------------------------------------
+                                array_index_length = [row.index(x) for x in array_header]
+                                length_array_header = len(array_header) - 1
+                                count = 0
+                                for x in array_header:
+                                    if count < length_array_header:
+                                        dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
+                                    else:
+                                        dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count]))
+                                    count = count + 1
+                                # ----------------------------------------------------------------------------------------------
+                                is_next = True
+                elif commandtext == "show lldp neighbor":
+                    array_process = []
+                    array_header = []
+                    arrayRow = list(filter(None, arrayRow))
+                    is_next = False
+                    lenght_array_row = len(arrayRow)
+                    for row in arrayRow:
+                        if '#' not in row and 'Total entries displayed:' not in row:
+                            if is_next:
+                                rows_dict = dict()
+                                array_value = row.split()
+                                if len(array_value) > 0:
+                                    for index, name in enumerate(array_header):
+                                        if name is not None or name is not '':
+                                            try:
+                                                rows_dict[name.replace(' ', '')] = array_value[index]
+                                            except:
+                                                rows_dict[name.replace(' ', '')] = ''
 
-            array_delete_interface = []
-            if len(array_interface_id) > 0:
-                interfaceimpl = InterfaceImpl()
-                list_interfaces = interfaceimpl.get_list_interface(self.deviceid)
-                if len(list_interfaces) > 0:
-                    for x in list_interfaces:
-                        if x.interface_id not in array_interface_id:
-                            array_delete_interface.append(x.interface_id)
-            # dang xu ly
-            #-----------------------------------------------------------------------------------------------------------
+                                    # ------------------- process insert/update/check database tablet interfaces ----------------
+                                    try:
+                                        if rows_dict['DeviceID'] is None or rows_dict['LocalIntf'] == '':
+                                            continue
+
+                                        interfaceimpl = InterfaceImpl()
+                                        intf = interfaceimpl.get_interface(self.deviceid, rows_dict['LocalIntf'])
+                                        if intf:  # exist interfaces then process lldp
+                                            interface_id = intf.interface_id
+                                            lldpImpl = LLDPImpl()
+                                            lldp = lldpImpl.get(interface_id)
+                                            lldp_dict = {
+                                                "interface_id":interface_id,
+                                                "remote_interface":rows_dict['PortID'],
+                                                "local_interface":rows_dict['LocalIntf'],
+                                                "remote_device": rows_dict['DeviceID'],
+                                                "local_deviceid": self.deviceid,
+                                                "data": rows_dict,
+                                                'local_device': arrayRow[lenght_array_row-1].replace('#','').replace('>','').replace('$','')
+                                            }
+                                            if lldp: #update lldp
+                                                lldpImpl.update(**lldp_dict)
+                                            else: #insert lldp
+                                                lldpImpl.save(**lldp_dict)
+                                    except Exception as ex:
+                                        _strError = "[DISCOVERY][INSERT][UPDATE][LLDP]: %s | THREAD %s" % (ex, self.name)
+                                        stringhelpers.err(_strError)
+                                    # --------------------------------------------------------------------------------------
+
+                                    output_result['rows'].append(rows_dict)
+
+                            if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
+                                array_header = row.split('  ')
+                                array_header = list(filter(None, array_header))
+                                is_next = True
+                else:
+                    _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
+                    stringhelpers.err(_strError)
+
+                #-------------------------------process delete interfaces & lldp if device not exist interface and lldp-----
+
+                array_delete_interface = []
+                if len(array_interface_id) > 0:
+                    interfaceimpl = InterfaceImpl()
+                    list_interfaces = interfaceimpl.get_list_interface(self.deviceid)
+                    if len(list_interfaces) > 0:
+                        for x in list_interfaces:
+                            if x.interface_id not in array_interface_id:
+                                array_delete_interface.append(x.interface_id)
+                # dang xu ly
+                #-----------------------------------------------------------------------------------------------------------
 
             return output_result
         except Exception as _errorException:
