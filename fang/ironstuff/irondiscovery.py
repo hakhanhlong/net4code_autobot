@@ -617,11 +617,13 @@ class Action(threading.Thread):
         array_interface_id = []
         array_index_length = []
         dict_index_header = dict()
+        array_header_map = []
         try:
 
             arrayRow = stringhelpers.text_to_arrayrow(result_fang)
             string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
             string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
+
 
             if string_contain_header is not None:
                 #if commandtext == "show interface description":
@@ -638,11 +640,17 @@ class Action(threading.Thread):
 
                                 #-------- get value follow colums ------------------------------------------------------
                                 for config_output in self.data_command['output']:
+                                    index_column = int(config_output.get('column', None))  # value index
                                     key = config_output['name'].lower()
+                                    start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
 
-                                    for k, v in dict_index_header.items():
-                                        if key in k.lower():
-                                            start, end = v
+                                    #start, end = dict_index_header[str(key_dict)]
+
+                                    '''for k, v in dict_index_header.items():
+                                        #if key in k.lower():
+                                        if index_column == count_number:
+                                            start, end = v'''
+
 
                                     value = row[start:end].strip()
                                     data_build[key] = value
@@ -695,6 +703,7 @@ class Action(threading.Thread):
                             if(string_contain_header in row):
                                 array_header = row.split()
                                 array_header = list(filter(None, array_header))
+                                array_header_map = list(filter(None, array_header))
 
                                 #-------------- process index get value colum --------------------------------------------------
                                 array_index_length = [row.index(x) for x in array_header]

@@ -30,7 +30,8 @@ class InterfaceImpl():
         device_id = kwargs['device_id']
         interface_name = kwargs['interface_name']
         s = Interfaces.objects(device_id=device_id, interface_name = interface_name).first()
-        s.data = kwargs['data']
+        for k, val in kwargs.items():
+            s[str(k)] = val
         s.modified = datetime.datetime.now()
         return s.save()
 
