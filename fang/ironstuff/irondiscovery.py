@@ -411,6 +411,11 @@ class Action(threading.Thread):
         self.dict_state_result = dict()
         self.deviceid = deviceid
 
+        self.dict_table_impl = {
+            'interfaces': InterfaceImpl,
+            'lldp': LLDPImpl
+        }
+
 
 
         # sao the nay
@@ -616,9 +621,11 @@ class Action(threading.Thread):
 
             arrayRow = stringhelpers.text_to_arrayrow(result_fang)
             string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
+            string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
 
             if string_contain_header is not None:
-                if commandtext == "show interface description":
+                #if commandtext == "show interface description":
+                if string_table_name == 'interfaces':
                     array_header = []
                     arrayRow = list(filter(None, arrayRow))
                     is_next = False
@@ -627,13 +634,18 @@ class Action(threading.Thread):
                             if is_next:
                                 rows_dict = dict()
                                 array_value = row.split()
-
+                                data_build = {}
 
                                 #-------- get value follow colums ------------------------------------------------------
                                 for config_output in self.data_command['output']:
                                     key = config_output['name'].lower()
-                                    start, end = dict_index_header[key]
-                                    value = row[start:end]
+
+                                    for k, v in dict_index_header.items():
+                                        if key in k.lower():
+                                            start, end = v
+
+                                    value = row[start:end].strip()
+                                    data_build[key] = value
                                 #---------------------------------------------------------------------------------------
 
                                 if len(array_value) > 0:
@@ -643,28 +655,34 @@ class Action(threading.Thread):
                                         except:
                                             rows_dict[name] = ''
 
+                                    data_build['device_id'] = self.deviceid
+                                    data_build['data'] = rows_dict
                                     #------------------- process insert/update/check database tablet interfaces --------
                                     try:
                                         if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
                                             continue
-                                        interfaceimpl = InterfaceImpl()
+                                        interfaceimpl = self.dict_table_impl.get(string_table_name, None)()
                                         intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
                                         if intf: #exist interfaces then update
-                                            interface_dict = {
+                                            '''interface_dict = {
                                                 'device_id': self.deviceid,
                                                 'interface_name': rows_dict['Interface'],
                                                 'data': rows_dict
-                                            }
+                                            }'''
                                             array_interface_id.append(intf.interface_id)
+                                            data_build['interface_name'] = rows_dict['Interface']
+                                            #interfaceimpl.update(**interface_dict)
+                                            interfaceimpl.update(**data_build)
 
-                                            interfaceimpl.update(**interface_dict)
                                         else: #not exist then insert
-                                            interface_dict = {
+                                            '''interface_dict = {
                                                 'device_id': self.deviceid,
                                                 'interface_name': rows_dict['Interface'],
                                                 'data': rows_dict
-                                            }
-                                            intf = interfaceimpl.save(**interface_dict)
+                                            }'''
+                                            #intf = interfaceimpl.save(**interface_dict)
+                                            data_build['interface_name'] = rows_dict['Interface']
+                                            intf = interfaceimpl.save(**data_build)
                                             array_interface_id.append(intf.interface_id)
                                     except Exception as ex:
                                         _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)

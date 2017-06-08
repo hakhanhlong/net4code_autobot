@@ -13,8 +13,8 @@ load_dotenv(dotenv_path)
 
 def main():
 
-    connect(host="mongodb://27.78.16.56:8040/iron_man")
-    #connect(host="mongodb://27.78.16.56:8040/ironmanV2")
+    #connect(host="mongodb://27.78.16.56:8040/iron_man")
+    connect(host="mongodb://27.78.16.56:8040/ironmanV2")
 
     stringhelpers.print_welcome()
     '''_mega_manager = MegaManager('MEGA-MANAGEMENT', False)
