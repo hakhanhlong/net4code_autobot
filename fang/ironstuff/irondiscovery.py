@@ -627,11 +627,7 @@ class Action(threading.Thread):
 
 
             if string_contain_header is not None:
-                #if commandtext == "show interface description":
-                #if string_table_name == 'interfaces':
                 array_header = []
-
-                #arrayRow = list(filter(None, array_row_data))
 
                 arrayRow = [x for x in array_row_data if x is not None]
 
@@ -671,12 +667,8 @@ class Action(threading.Thread):
                                 data_build['command_id'] = command_id
                                 #------------------- process insert/update/check database tablet interfaces --------
                                 try:
-                                    #if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
-                                    #    continue
 
                                     netwImpl = NetworkObjectImpl()
-
-
 
                                     intf = netwImpl.get(self.deviceid, string_table_name, index_column, row_count, command_id)
 
@@ -693,7 +685,6 @@ class Action(threading.Thread):
 
                                 output_result['rows'].append(rows_dict)
 
-                        #if ('Interface' in row) and ('Protocol' in row): # phan loai row header
                         if(string_contain_header in row):
                             array_header = row.split()
                             array_header = [x for x in array_header if x is not None]
