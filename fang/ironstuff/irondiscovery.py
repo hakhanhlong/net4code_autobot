@@ -7,6 +7,7 @@ from . import func_compare
 import json
 
 from database.impl.interfaces_Impl import InterfaceImpl
+from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
 
@@ -614,113 +615,111 @@ class Action(threading.Thread):
         key = str(command_id)
         output_result[key] = dict()
         output_result[key]['output'] = []
-        array_interface_id = []
+        array_network_id = []
         array_index_length = []
         dict_index_header = dict()
         array_header_map = []
         try:
 
-            arrayRow = stringhelpers.text_to_arrayrow(result_fang)
+            array_row_data = stringhelpers.text_to_arrayrow(result_fang)
             string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
             string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
 
 
             if string_contain_header is not None:
                 #if commandtext == "show interface description":
-                if string_table_name == 'interfaces':
-                    array_header = []
-                    arrayRow = list(filter(None, arrayRow))
-                    is_next = False
-                    for row in arrayRow:
-                        if '#' not in row:
-                            if is_next:
-                                rows_dict = dict()
-                                array_value = row.split()
-                                data_build = {}
+                #if string_table_name == 'interfaces':
+                array_header = []
 
-                                #-------- get value follow colums ------------------------------------------------------
-                                for config_output in self.data_command['output']:
-                                    index_column = int(config_output.get('column', None))  # value index
-                                    key = config_output['name'].lower()
-                                    start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
+                #arrayRow = list(filter(None, array_row_data))
 
-                                    #start, end = dict_index_header[str(key_dict)]
+                arrayRow = [x for x in array_row_data if x is not None]
 
-                                    '''for k, v in dict_index_header.items():
-                                        #if key in k.lower():
-                                        if index_column == count_number:
-                                            start, end = v'''
+                is_next = False
+                row_count = 0
+                for row in arrayRow:
+                    if row == '':
+                        continue
+                    if '#' not in row:
+                        if is_next:
+                            rows_dict = dict()
+                            array_value = row.split()
+                            data_build = {}
 
+                            #-------- get value follow colums ------------------------------------------------------
+                            for config_output in self.data_command['output']:
+                                index_column = int(config_output.get('column', None))  # value index
+                                key = config_output['name'].lower()
+                                start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
+                                value = row[start:end].strip()
+                                data_build[key] = value
 
-                                    value = row[start:end].strip()
-                                    data_build[key] = value
-                                #---------------------------------------------------------------------------------------
+                            #---------------------------------------------------------------------------------------
 
-                                if len(array_value) > 0:
-                                    for index, name in enumerate(array_header):
-                                        try:
-                                            rows_dict[name] = array_value[index]
-                                        except:
-                                            rows_dict[name] = ''
-
-                                    data_build['device_id'] = self.deviceid
-                                    data_build['data'] = rows_dict
-                                    #------------------- process insert/update/check database tablet interfaces --------
+                            if len(array_value) > 0:
+                                for index, name in enumerate(array_header):
                                     try:
-                                        if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
-                                            continue
-                                        interfaceimpl = self.dict_table_impl.get(string_table_name, None)()
-                                        intf = interfaceimpl.get_interface(self.deviceid, rows_dict['Interface'])
-                                        if intf: #exist interfaces then update
-                                            '''interface_dict = {
-                                                'device_id': self.deviceid,
-                                                'interface_name': rows_dict['Interface'],
-                                                'data': rows_dict
-                                            }'''
-                                            array_interface_id.append(intf.interface_id)
-                                            data_build['interface_name'] = rows_dict['Interface']
-                                            #interfaceimpl.update(**interface_dict)
-                                            interfaceimpl.update(**data_build)
+                                        rows_dict[name] = array_value[index]
+                                    except:
+                                        rows_dict[name] = ''
 
-                                        else: #not exist then insert
-                                            '''interface_dict = {
-                                                'device_id': self.deviceid,
-                                                'interface_name': rows_dict['Interface'],
-                                                'data': rows_dict
-                                            }'''
-                                            #intf = interfaceimpl.save(**interface_dict)
-                                            data_build['interface_name'] = rows_dict['Interface']
-                                            intf = interfaceimpl.save(**data_build)
-                                            array_interface_id.append(intf.interface_id)
-                                    except Exception as ex:
-                                        _strError = "[DISCOVERY][INSERT][UPDATE][INTERFACE]: %s | THREAD %s" % (ex, self.name)
-                                        stringhelpers.err(_strError)
-                                    #-------------------------------------------------------------------------------------------
+                                data_build['device_id'] = self.deviceid
+                                data_build['data'] = rows_dict
+                                data_build['table'] = string_table_name
+                                data_build['column'] = index_column
+                                data_build['row'] = row_count
+                                data_build['command_id'] = command_id
+                                #------------------- process insert/update/check database tablet interfaces --------
+                                try:
+                                    #if rows_dict['Interface'] is None or rows_dict['Interface'] == '':
+                                    #    continue
 
-                                    output_result['rows'].append(rows_dict)
+                                    netwImpl = NetworkObjectImpl()
 
-                            #if ('Interface' in row) and ('Protocol' in row): # phan loai row header
-                            if(string_contain_header in row):
-                                array_header = row.split()
-                                array_header = list(filter(None, array_header))
-                                array_header_map = list(filter(None, array_header))
 
-                                #-------------- process index get value colum --------------------------------------------------
-                                array_index_length = [row.index(x) for x in array_header]
-                                length_array_header = len(array_header) - 1
-                                count = 0
-                                for x in array_header:
-                                    if count < length_array_header:
-                                        dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
-                                    else:
-                                        dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count]))
-                                    count = count + 1
-                                # ----------------------------------------------------------------------------------------------
-                                is_next = True
-                elif commandtext == "show lldp neighbor":
+
+                                    intf = netwImpl.get(self.deviceid, string_table_name, index_column, row_count, command_id)
+
+                                    if intf: #exist interfaces then update
+                                        array_network_id.append(intf.networkobject_id)
+                                        netwImpl.update(**data_build)
+                                    else: #not exist then insert
+                                        intf = netwImpl.save(**data_build)
+                                        array_network_id.append(intf.networkobject_id)
+                                except Exception as ex:
+                                    _strError = "[DISCOVERY][INSERT][UPDATE][%s]: %s | THREAD %s" % (ex, string_table_name, self.name)
+                                    stringhelpers.err(_strError)
+                                #-------------------------------------------------------------------------------------------
+
+                                output_result['rows'].append(rows_dict)
+
+                        #if ('Interface' in row) and ('Protocol' in row): # phan loai row header
+                        if(string_contain_header in row):
+                            array_header = row.split()
+                            array_header = [x for x in array_header if x is not None]
+                            array_header_map = array_header
+
+                            #-------------- process index get value colum --------------------------------------------------
+                            array_index_length = [row.index(x) for x in array_header]
+                            length_array_header = len(array_header) - 1
+                            count = 0
+                            for x in array_header:
+                                if count < length_array_header:
+                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
+                                else:
+                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count])*2)
+                                count = count + 1
+                            # ----------------------------------------------------------------------------------------------
+                            is_next = True
+                    row_count = row_count + 1
+                #else:
+                #    _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
+                #    stringhelpers.err(_strError)
+                '''elif commandtext == "show lldp neighbor":
                     array_process = []
                     array_header = []
-                    arrayRow = list(filter(None, arrayRow))
+                    #arrayRow = list(filter(None, array_row_data))
+                    arrayRow = [x for x in array_row_data if x is not None]
                     is_next = False
                     lenght_array_row = len(arrayRow)
                     for row in arrayRow:
@@ -770,22 +769,24 @@ class Action(threading.Thread):
                             if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
                                 array_header = row.split('  ')
                                 array_header = list(filter(None, array_header))
-                                is_next = True
-                else:
-                    _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
-                    stringhelpers.err(_strError)
+                                is_next = True'''
+
 
                 #-------------------------------process delete interfaces & lldp if device not exist interface and lldp-----
-
-                array_delete_interface = []
-                if len(array_interface_id) > 0:
-                    interfaceimpl = InterfaceImpl()
-                    list_interfaces = interfaceimpl.get_list_interface(self.deviceid)
-                    if len(list_interfaces) > 0:
-                        for x in list_interfaces:
-                            if x.interface_id not in array_interface_id:
-                                array_delete_interface.append(x.interface_id)
+                array_delete_networkobject = []
+                if len(array_network_id) > 0:
+                    netwImpl = NetworkObjectImpl()
+                    list = netwImpl.get_list(self.deviceid, string_table_name, command_id)
+                    if len(list) > 0:
+                        for x in list:
+                            if x.networkobject_id not in array_network_id:
+                                array_delete_networkobject.append(x.networkobject_id)
+                        if len(array_delete_networkobject) > 0:
+                            for d in array_delete_networkobject:
+                                netwImpl.delete(d)
+                                stringhelpers.err('[DELETE][NETWORK_OBJECT_ID] - %s' % (str(d)), '\n\n')
                 # dang xu ly
+
                 #-----------------------------------------------------------------------------------------------------------
 
             return output_result
