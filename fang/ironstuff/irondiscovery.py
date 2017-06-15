@@ -667,7 +667,6 @@ class Action(threading.Thread):
                                 data_build['command_id'] = command_id
                                 #------------------- process insert/update/check database tablet interfaces --------
                                 try:
-
                                     netwImpl = NetworkObjectImpl()
 
                                     intf = netwImpl.get(self.deviceid, string_table_name, index_column, row_count, command_id)
