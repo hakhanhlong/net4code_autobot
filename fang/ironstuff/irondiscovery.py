@@ -621,9 +621,18 @@ class Action(threading.Thread):
         array_header_map = []
         try:
 
+            start_by = self.data_command['output'][0].get('start_by', None)
+            end_by = self.data_command['output'][0].get('end_by', None)
+
+            if start_by is not None and end_by is not None:
+                result_fang = stringhelpers.string_between(result_fang, start_by, end_by)
+            else:
+                return  None
+
             array_row_data = stringhelpers.text_to_arrayrow(result_fang)
             string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
             string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
+
 
 
             if string_contain_header is not None:
@@ -685,8 +694,8 @@ class Action(threading.Thread):
                                 output_result['rows'].append(rows_dict)
 
                         if(string_contain_header in row):
-                            array_header = row.split()
-                            array_header = [x for x in array_header if x is not None]
+                            array_header = row.split('  ')
+                            array_header = [x for x in array_header if x is not None and x is not '']
                             array_header_map = array_header
 
                             #-------------- process index get value colum --------------------------------------------------
