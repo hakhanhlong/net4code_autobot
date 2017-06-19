@@ -49,8 +49,12 @@ class FlaskManager(threading.Thread):
 
                             _template['run_devices'] = run_devices
                             #------------------------------------------------------------------------------------
-                            _template['run_args'] = x['run_args']
-                            _template['rollback_args'] = x['rollback_args']
+                            try:
+                                _template['run_args'] = x['run_args']
+                                _template['rollback_args'] = x['rollback_args']
+                            except:
+                                pass
+
 
 
                             dict_template[key_mop] = key_mop
