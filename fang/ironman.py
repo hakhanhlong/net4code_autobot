@@ -54,7 +54,7 @@ class IronManager(threading.Thread):
             except Exception as e:
                 stringhelpers.print_bold("IRONMAN SCHEDULE [ERROR]: " + str(e), "\n")
 
-            time.sleep(1000)
+            time.sleep(30)
 
     def stop(self):
         self.is_stop = True
