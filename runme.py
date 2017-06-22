@@ -17,11 +17,11 @@ def main():
     #connect(host="mongodb://27.78.16.56:8040/ironmanV2")
 
     stringhelpers.print_welcome()
-    _mega_manager = MegaManager('MEGA-MANAGEMENT', False)
-    _mega_manager.start()
+    '''_mega_manager = MegaManager('MEGA-MANAGEMENT', False)
+    _mega_manager.start()'''
 
-    _flask_manager = FlaskManager('FLASK-MANAGEMENT', False)
-    _flask_manager.start()
+    '''_flask_manager = FlaskManager('FLASK-MANAGEMENT', False)
+    _flask_manager.start()'''
 
     _ironman_manager = IronManager('IRONMAN-MANAGEMENT', False)
     _ironman_manager.start()

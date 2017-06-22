@@ -9,7 +9,7 @@ from datetime import datetime
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
-    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None):
+    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, isQueue=False):
         threading.Thread.__init__(self)
         self.name = name
         self.mop_data = mop_data
@@ -20,6 +20,8 @@ class Schedule(threading.Thread):
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
         self.is_waiting = True
+        self.is_queue = isQueue
+
 
     def run(self):
         try:
@@ -48,6 +50,8 @@ class Schedule(threading.Thread):
                 irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']), self.template_data)
                 irondiscovery.start()
                 irondiscovery.join()
+
+
 
                 if self.mechanism == 'MANUAL':
                     self.is_stop = True

@@ -6,11 +6,9 @@ from ultils import stringhelpers
 
 from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
-
-from database.impl.interfaces_Impl import InterfaceImpl
-from database.impl.lldp_impl import LLDPImpl
-
 from fang.ironstuff.schedule import Schedule
+
+
 
 
 
@@ -27,6 +25,11 @@ class IronManager(threading.Thread):
     def run(self):
         _request = RequestHelpers()
         dict_schedule = dict()
+        dict_schedule_queue = dict()
+        list_time = list()
+        run_queue = list()
+        schedule_manager = dict()
+        status_schedule_queue_run = dict()
         while not self.is_stop:
             try:
                 self.counter = self.counter + 1
@@ -41,14 +44,39 @@ class IronManager(threading.Thread):
                         schedule_id = x['schedule_id']
                         template_id = x['templates']
                         mechanism = x['mechanism']
+                        dict_schedule_queue[str(x['schedule_id'])] = x['time']
+                        list_time.append(x['time'])
+
                         if dict_schedule.get(key_mop, None) is not None:
                             pass
                         else:
                             _request.url = self.requestURL.MEGA_URL_TEMPLATE_DETAIL % (str(template_id))
                             _template = _request.get().json()
                             dict_schedule[key_mop] = key_mop
-                            schedule = Schedule("SCHEDULE-%d" % (schedule_id), x, _template,  dict_schedule, False, mechanism)
-                            schedule.start()
+
+                            schedule = Schedule("SCHEDULE-%d" % (schedule_id), x, _template,  dict_schedule, False,
+                                                mechanism, False)
+
+                            schedule_manager[str(schedule_id)] = schedule
+
+
+                    # check same time start between mops
+                    for k, v in dict_schedule_queue.items():
+                        for _time in list_time:
+                            if v == _time:
+                                run_queue.append(schedule_manager[k])
+                                break
+                            else:
+                                schedule_manager[k].start()
+                                break
+
+                    if len(run_queue) > 0:
+                        for item_run_queue in run_queue:
+                            item_run_queue.is_queue = True
+                            pass
+
+
+
 
                 stringhelpers.print_bold("IRONMAN SCHEDULE RUN NUMBER: " + str(self.counter), "\n")
             except Exception as e:
