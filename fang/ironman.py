@@ -55,7 +55,7 @@ class IronManager(threading.Thread):
                             dict_schedule[key_mop] = key_mop
 
                             schedule = Schedule("SCHEDULE-%d" % (schedule_id), x, _template,  dict_schedule, False,
-                                                mechanism, False)
+                                                mechanism, False, schedule_id)
 
                             schedule_manager[str(schedule_id)] = schedule
 
@@ -71,9 +71,18 @@ class IronManager(threading.Thread):
                                 break
 
                     if len(run_queue) > 0:
+                        count = 0
                         for item_run_queue in run_queue:
                             item_run_queue.is_queue = True
-                            pass
+                            if count == 0:
+                                status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'START'
+                            else:
+                                status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'PAUSE'
+
+                            item_run_queue.status_schedule_queue_run = status_schedule_queue_run
+
+
+                            count=count+1
 
 
 

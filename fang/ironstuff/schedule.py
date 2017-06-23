@@ -9,7 +9,7 @@ from datetime import datetime
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
-    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, isQueue=False):
+    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, isQueue=False, schedule_id = 0):
         threading.Thread.__init__(self)
         self.name = name
         self.mop_data = mop_data
@@ -21,6 +21,8 @@ class Schedule(threading.Thread):
         self._request = RequestHelpers()
         self.is_waiting = True
         self.is_queue = isQueue
+        self.schedule_id = schedule_id
+        self.status_schedule_queue_run = None
 
 
     def run(self):
