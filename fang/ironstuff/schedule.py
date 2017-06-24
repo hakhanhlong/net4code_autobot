@@ -49,11 +49,25 @@ class Schedule(threading.Thread):
 
                 key_mop = 'main_schedule_%d' % (self.mop_data['schedule_id'])
 
-                irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']), self.template_data)
-                irondiscovery.start()
-                irondiscovery.join()
+                irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
+                                              self.template_data)
+                if self.is_queue == False:
+                    irondiscovery.start()
+                    irondiscovery.join()
+                else:
+                    while True:
+                        if self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] == 'START':
+                            if str(self.mop_data['schedule_id']) == '6':
+                                pass
+                            irondiscovery.start()
+                            irondiscovery.join()
+                            self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] = 'PAUSE'
+                            for k, v in self.status_schedule_queue_run.items():
+                                if k != str(self.mop_data['schedule_id']):
+                                    self.status_schedule_queue_run[str(k)] = 'START'
+                                    break
 
-
+                            break
 
                 if self.mechanism == 'MANUAL':
                     self.is_stop = True

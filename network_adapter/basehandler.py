@@ -59,7 +59,7 @@ class BaseHandler:
                 index = self.session.expect_list(prompt, timeout=timeout)
             except:
                 self.session.terminate()
-                print("Connect error at '{}'.\n".format(self.host))
+                print("Connect error at '{}, port {}'.\n".format(self.host, self.port))
                 print(self.session.before)
                 sys.exit()
                 return False

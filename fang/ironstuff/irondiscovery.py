@@ -10,12 +10,14 @@ from database.impl.interfaces_Impl import InterfaceImpl
 from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
+import functools
 
 
 
+#@functools.total_ordering
 class IronDiscovery(threading.Thread):
     """ Thread instance each process template """
-    def __init__(self, name, data_template = None, dict_template = {}):
+    def __init__(self,  name, data_template = None, dict_template = {}):
         threading.Thread.__init__(self)
         self.name = name
         self.data_template = data_template
@@ -25,6 +27,21 @@ class IronDiscovery(threading.Thread):
 
         self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = []
+
+        #self.priority = priority
+
+    '''def __eq__(self, other):
+        try:
+            return self.priority == other.priority
+        except AttributeError:
+            return NotImplemented
+
+    def __lt__(self, other):
+        try:
+            return self.priority < other.priority
+        except AttributeError:
+            return NotImplemented'''
+
 
     def run(self):
         if self.info_fang is not None:

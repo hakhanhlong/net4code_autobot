@@ -45,11 +45,12 @@ class IronManager(threading.Thread):
                         template_id = x['templates']
                         mechanism = x['mechanism']
                         dict_schedule_queue[str(x['schedule_id'])] = x['time']
-                        list_time.append(x['time'])
+
 
                         if dict_schedule.get(key_mop, None) is not None:
                             pass
                         else:
+                            list_time.append(x['time'])
                             _request.url = self.requestURL.MEGA_URL_TEMPLATE_DETAIL % (str(template_id))
                             _template = _request.get().json()
                             dict_schedule[key_mop] = key_mop
@@ -61,28 +62,33 @@ class IronManager(threading.Thread):
 
 
                     # check same time start between mops
-                    for k, v in dict_schedule_queue.items():
-                        for _time in list_time:
-                            if v == _time:
-                                run_queue.append(schedule_manager[k])
-                                break
-                            else:
-                                schedule_manager[k].start()
-                                break
+                    if len(schedule_manager.items()) > 0:
+                        for k, v in dict_schedule_queue.items():
+                            for _time in list_time:
+                                if v == _time:
+                                    run_queue.append(schedule_manager[k])
+                                    del schedule_manager[k]
+                                    break
+                                else:
+                                    schedule_manager[k].start()
+                                    del schedule_manager[k]
+                                    break
 
-                    if len(run_queue) > 0:
-                        count = 0
-                        for item_run_queue in run_queue:
-                            item_run_queue.is_queue = True
-                            if count == 0:
-                                status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'START'
-                            else:
-                                status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'PAUSE'
+                        if len(run_queue) > 0:
+                            count = 0
+                            for item_run_queue in run_queue:
+                                item_run_queue.is_queue = True
+                                if count == 0:
+                                    status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'START'
+                                else:
+                                    status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'PAUSE'
 
-                            item_run_queue.status_schedule_queue_run = status_schedule_queue_run
+                                item_run_queue.status_schedule_queue_run = status_schedule_queue_run
 
+                                item_run_queue.start()
+                                count=count+1
+                            del run_queue[:]
 
-                            count=count+1
 
 
 
