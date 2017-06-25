@@ -10,7 +10,7 @@ from database.impl.interfaces_Impl import InterfaceImpl
 from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
-import functools
+import re
 
 
 
@@ -713,9 +713,16 @@ class Action(threading.Thread):
                                 output_result['rows'].append(rows_dict)
 
                         if(string_contain_header in row):
-                            array_header = row.split(' ')
-                            array_header = [x for x in array_header if x is not None and x is not '']
-                            array_header_map = array_header
+
+                            matches = [(m.group(0), (m.start(), m.end() - 1)) for m in re.finditer(r'\S+', row)]
+                            header, header_index = zip(*matches)
+                            if len(header) >= 8:
+                                array_header = row.split('  ')
+                                array_header = [x for x in array_header if x is not None and x is not '']
+                                array_header_map = array_header
+                            else:
+                                array_header = header
+                                array_header_map = header
 
                             #-------------- process index get value colum --------------------------------------------------
                             array_index_length = [row.index(x) for x in array_header]
