@@ -57,8 +57,6 @@ class Schedule(threading.Thread):
                 else:
                     while True:
                         if self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] == 'START':
-                            if str(self.mop_data['schedule_id']) == '6':
-                                pass
                             irondiscovery.start()
                             irondiscovery.join()
                             self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] = 'PAUSE'
