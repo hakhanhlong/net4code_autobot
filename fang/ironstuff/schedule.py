@@ -64,7 +64,6 @@ class Schedule(threading.Thread):
                                 if k != str(self.mop_data['schedule_id']):
                                     self.status_schedule_queue_run[str(k)] = 'START'
                                     break
-
                             break
 
                 if self.mechanism == 'MANUAL':
