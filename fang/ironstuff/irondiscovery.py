@@ -28,19 +28,7 @@ class IronDiscovery(threading.Thread):
         self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = []
 
-        #self.priority = priority
 
-    '''def __eq__(self, other):
-        try:
-            return self.priority == other.priority
-        except AttributeError:
-            return NotImplemented
-
-    def __lt__(self, other):
-        try:
-            return self.priority < other.priority
-        except AttributeError:
-            return NotImplemented'''
 
 
     def run(self):

@@ -47,6 +47,9 @@ class Schedule(threading.Thread):
 
                 self.template_data['run_devices'] = run_devices
 
+                if self.mop_data['schedule_id'] == 7:
+                    a = 'test'
+
                 key_mop = 'main_schedule_%d' % (self.mop_data['schedule_id'])
 
                 irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
