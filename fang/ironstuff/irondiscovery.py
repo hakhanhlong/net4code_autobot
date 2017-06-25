@@ -731,8 +731,8 @@ class Action(threading.Thread):
                             for x in array_header:
                                 if count < length_array_header:
                                     dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
-                                else:
-                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count])*2)
+                                else: #last column
+                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count])*15)
                                 count = count + 1
                             # ----------------------------------------------------------------------------------------------
                             is_next = True
