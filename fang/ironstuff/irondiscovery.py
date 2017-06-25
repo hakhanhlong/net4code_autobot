@@ -650,6 +650,8 @@ class Action(threading.Thread):
             string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
             string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
 
+            if string_table_name == 'interfaces':
+                a = 'longhk'
 
 
             if string_contain_header is not None:
@@ -662,7 +664,7 @@ class Action(threading.Thread):
                 for row in arrayRow:
                     if row == '':
                         continue
-                    if '#' not in row:
+                    if '#' not in row and '---------' not in row:
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
@@ -711,7 +713,7 @@ class Action(threading.Thread):
                                 output_result['rows'].append(rows_dict)
 
                         if(string_contain_header in row):
-                            array_header = row.split('  ')
+                            array_header = row.split(' ')
                             array_header = [x for x in array_header if x is not None and x is not '']
                             array_header_map = array_header
 
