@@ -27,6 +27,7 @@ class IronDiscovery(threading.Thread):
 
         self.info_fang = self.buildinfo_subtemplates()
         self.result_templates = []
+        self.done = False
 
 
 
@@ -41,6 +42,7 @@ class IronDiscovery(threading.Thread):
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
                 self.result_templates.append(dict_template)
             # ----------------------------------------------------------------------------------------------------------
+            self.done = True
 
 
         else:

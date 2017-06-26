@@ -66,8 +66,11 @@ class Schedule(threading.Thread):
                         del self.dict_schedule[key_mop]
                         self.is_stop = True
                     else:
-                        stringhelpers.info('[IRON][DISCOVERY][WAITING][%d s][%s]' % (int(self.mop_data['interval']), self.name))
-                        time.sleep(int(self.mop_data['interval']))
+                        while True:
+                            if irondiscovery.done == True:
+                                stringhelpers.info('[IRON][DISCOVERY][WAITING][%d s][%s]' % (int(self.mop_data['interval']), self.name))
+                                time.sleep(int(self.mop_data['interval']))
+                                break
 
         except Exception as error:
             stringhelpers.err("[ERROR] %s %s" % (self.name, error))
