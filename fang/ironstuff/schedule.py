@@ -9,7 +9,7 @@ from datetime import datetime
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
-    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, isQueue=False, schedule_id = 0):
+    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, schedule_id = 0, queue=None):
         threading.Thread.__init__(self)
         self.name = name
         self.mop_data = mop_data
@@ -20,9 +20,8 @@ class Schedule(threading.Thread):
         self.requestURL = RequestURL()
         self._request = RequestHelpers()
         self.is_waiting = True
-        self.is_queue = isQueue
         self.schedule_id = schedule_id
-        self.status_schedule_queue_run = None
+        self.queue = queue
 
 
     def run(self):
@@ -47,27 +46,16 @@ class Schedule(threading.Thread):
 
                 self.template_data['run_devices'] = run_devices
 
-                if self.mop_data['schedule_id'] == 7:
-                    a = 'test'
 
                 key_mop = 'main_schedule_%d' % (self.mop_data['schedule_id'])
 
                 irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
                                               self.template_data)
-                if self.is_queue == False:
-                    irondiscovery.start()
-                    irondiscovery.join()
-                else:
-                    while True:
-                        if self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] == 'START':
-                            irondiscovery.start()
-                            irondiscovery.join()
-                            self.status_schedule_queue_run[str(self.mop_data['schedule_id'])] = 'PAUSE'
-                            for k, v in self.status_schedule_queue_run.items():
-                                if k != str(self.mop_data['schedule_id']):
-                                    self.status_schedule_queue_run[str(k)] = 'START'
-                                    break
-                            break
+                #insert to queue discovery
+                self.queue.put(irondiscovery)
+
+                #irondiscovery.start()
+                #irondiscovery.join()
 
                 if self.mechanism == 'MANUAL':
                     self.is_stop = True

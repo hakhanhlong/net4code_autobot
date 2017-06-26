@@ -8,6 +8,10 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from fang.ironstuff.schedule import Schedule
 
+import queue
+
+from fang.ironstuff.ironqueue import IronQueue
+
 
 
 
@@ -30,6 +34,13 @@ class IronManager(threading.Thread):
         run_queue = list()
         schedule_manager = dict()
         status_schedule_queue_run = dict()
+        queue_discovery = queue.Queue()
+
+        # run queue listining discovery ------------------------------------------------------------------------------
+        _ironQueue = IronQueue(queue_discovery)
+        _ironQueue.start()
+        # ------------------------------------------------------------------------------------------------------------
+
         while not self.is_stop:
             try:
                 self.counter = self.counter + 1
@@ -46,7 +57,6 @@ class IronManager(threading.Thread):
                         mechanism = x['mechanism']
                         dict_schedule_queue[str(x['schedule_id'])] = x['time']
 
-
                         if dict_schedule.get(key_mop, None) is not None:
                             pass
                         else:
@@ -54,50 +64,20 @@ class IronManager(threading.Thread):
                             _request.url = self.requestURL.MEGA_URL_TEMPLATE_DETAIL % (str(template_id))
                             _template = _request.get().json()
                             dict_schedule[key_mop] = key_mop
-
                             schedule = Schedule("SCHEDULE-%d" % (schedule_id), x, _template,  dict_schedule, False,
-                                                mechanism, False, schedule_id)
-
-                            schedule_manager[str(schedule_id)] = schedule
-
-
-                    # check same time start between mops
-                    if len(schedule_manager.items()) > 0:
-                        for k, v in dict_schedule_queue.items():
-                            for _time in list_time:
-                                if v == _time:
-                                    run_queue.append(schedule_manager[k])
-                                    del schedule_manager[k]
-                                    break
-                                else:
-                                    schedule_manager[k].start()
-                                    del schedule_manager[k]
-                                    break
-
-                        if len(run_queue) > 0:
-                            count = 0
-                            for item_run_queue in run_queue:
-                                item_run_queue.is_queue = True
-                                if count == 0:
-                                    status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'START'
-                                else:
-                                    status_schedule_queue_run[str(item_run_queue.schedule_id)] = 'PAUSE'
-
-                                item_run_queue.status_schedule_queue_run = status_schedule_queue_run
-
-                                item_run_queue.start()
-                                count=count+1
-                            del run_queue[:]
-
-
-
-
+                                                mechanism, schedule_id, queue_discovery)
+                            schedule.start()
+                            time.sleep(2)
 
                 stringhelpers.print_bold("IRONMAN SCHEDULE RUN NUMBER: " + str(self.counter), "\n")
             except Exception as e:
                 stringhelpers.print_bold("IRONMAN SCHEDULE [ERROR]: " + str(e), "\n")
 
             time.sleep(30)
+
+        # stop iron queue ----------------------------------------------------------------------------------------------
+        _ironQueue.stop()
+        #---------------------------------------------------------------------------------------------------------------
 
     def stop(self):
         self.is_stop = True
