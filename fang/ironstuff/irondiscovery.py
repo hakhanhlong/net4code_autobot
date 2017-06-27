@@ -11,6 +11,7 @@ from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
 import re
+import datetime
 
 
 
@@ -669,6 +670,8 @@ class Action(threading.Thread):
                                 value = row[start:end].strip()
                                 data_build[key] = value
                                 data_version[key] = value
+
+                            data_version['modifieddate'] = datetime.datetime.now()
 
                             #---------------------------------------------------------------------------------------
 
