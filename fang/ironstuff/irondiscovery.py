@@ -658,7 +658,8 @@ class Action(threading.Thread):
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
-                            data_build = {}
+                            data_build = dict(versions=[])
+                            data_version = {}
 
                             #-------- get value follow colums ------------------------------------------------------
                             for config_output in self.data_command['output']:
@@ -667,6 +668,7 @@ class Action(threading.Thread):
                                 start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
                                 value = row[start:end].strip()
                                 data_build[key] = value
+                                data_version[key] = value
 
                             #---------------------------------------------------------------------------------------
 
@@ -691,8 +693,13 @@ class Action(threading.Thread):
 
                                     if intf: #exist interfaces then update
                                         array_network_id.append(intf.networkobject_id)
+                                        versions = intf['versions']
+                                        if versions is not None:
+                                            versions.append(data_version)
+                                            data_build['versions'] = versions
                                         netwImpl.update(**data_build)
                                     else: #not exist then insert
+                                        data_build['versions'].append(data_version)
                                         intf = netwImpl.save(**data_build)
                                         array_network_id.append(intf.networkobject_id)
                                 except Exception as ex:
