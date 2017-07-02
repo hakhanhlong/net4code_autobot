@@ -663,14 +663,18 @@ class Action(threading.Thread):
 
                             #-------- get value follow colums ------------------------------------------------------
                             for config_output in self.data_command['output']:
-                                index_column = int(config_output.get('column', None))  # value index
-                                key = config_output['name'].lower()
-                                header = config_output['header'].lower()
-                                start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
-                                #start, end = dict_index_header.get(header.lower(), None)
-                                value = row[start:end].strip()
-                                data_build[key] = value
-                                data_version[key] = value
+                                try:
+                                    index_column = int(config_output.get('column', None))  # value index
+                                    key = config_output['name'].lower()
+                                    header = config_output['header'].lower()
+                                    start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
+                                    # start, end = dict_index_header.get(header.lower(), None)
+                                    value = row[start:end].strip()
+                                    data_build[key] = value
+                                    data_version[key] = value
+                                except:
+                                    pass
+
 
                             data_version['modifieddate'] = datetime.datetime.now()
 
@@ -731,6 +735,8 @@ class Action(threading.Thread):
                                 if header is not None:
                                     #array_header.append(header.lower())
                                     row = row.replace(header.lower(), "{}{}".format("|", header.lower()))
+                                    row = row.replace("?", "?|")
+
                             #else:
                             #    array_header_map = array_header
                             header = row.split('|')
@@ -738,23 +744,23 @@ class Action(threading.Thread):
                                 sub_header = []
                                 for h_item in header:
                                     if h_item is not '' and h_item is not None:
-                                        array_header.append(h_item.replace("|", ""))
+                                        _header_uppercase = h_item.replace("|", "")
+                                        array_header.append(_header_uppercase)
+
                                 for h_item in array_header:
                                     if h_item is not '' and h_item is not None:
                                         try:
                                             if h_item.rfind("  ") > 0:
                                                 sub_header.extend(h_item.split("  "))
                                             else:
-                                                if h_item.rfind('?') > 0: # special character
-                                                    sub_header.extend(h_item.split(" "))
-                                                else:
-                                                    sub_header.append(h_item)
+                                                sub_header.append(h_item)
                                         except:
                                             #index out range
                                             pass
-
                                             #array_header.remove(h_item)
-                                array_header = sub_header
+
+
+                                #array_header = sub_header
                                 array_header = [x for x in array_header if x is not None and x is not '' and x is not ' ']
                                 array_header_map = array_header
                             else:
