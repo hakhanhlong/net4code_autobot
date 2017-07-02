@@ -31,9 +31,6 @@ class IronManager(threading.Thread):
         dict_schedule = dict()
         dict_schedule_queue = dict()
         list_time = list()
-        run_queue = list()
-        schedule_manager = dict()
-        status_schedule_queue_run = dict()
         queue_discovery = queue.Queue()
 
         # run queue listining discovery ------------------------------------------------------------------------------

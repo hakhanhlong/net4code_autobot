@@ -485,7 +485,7 @@ class Action(threading.Thread):
                             dependStep = dependency
                             if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
 
-                                output_info = self.process_each_command(command_id, _dict_list_params)
+                                output_info = self.process_each_command(command_id, _dict_list_params, step)
                                 if output_info is not None:
                                     previous_final_output.append(output_info[str(command_id)]['final_output'])
                                     self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
@@ -499,7 +499,7 @@ class Action(threading.Thread):
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
-                            output_info = self.process_each_command(command_id, _dict_list_params)
+                            output_info = self.process_each_command(command_id, _dict_list_params, step)
                             if output_info is not None:
                                 previous_final_output.append(output_info[str(command_id)]['final_output'])
                                 self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
@@ -573,7 +573,7 @@ class Action(threading.Thread):
             stringhelpers.err("MEGA ACTIONS CONNECT API URL ERROR %s | THREAD %s" % (self._request.url, self.name))
 
 
-    def process_each_command(self, command_id = 0, _dict_list_params = []):
+    def process_each_command(self, command_id = 0, _dict_list_params = [], step=''):
         '''process command contains params'''
         try:
             self._request.url = self.requestURL.MEGA_URL_COMMAND_DETAIL % (command_id)
@@ -604,7 +604,7 @@ class Action(threading.Thread):
 
 
             # processing parsing command follow output ###########################################
-            action_command_log = self.parsing(command_id ,result_fang, commands[0])
+            action_command_log = self.parsing(command_id ,result_fang, commands[0], step)
             action_command_log = None
             return action_command_log
             ######################################################################################
@@ -616,7 +616,7 @@ class Action(threading.Thread):
             return None
 
 
-    def parsing(self, command_id = 0, result_fang = None, commandtext=None):
+    def parsing(self, command_id = 0, result_fang = None, commandtext=None, step=''):
         final_result_output = []
         output_result = dict(deviceid=self.deviceid)
         output_result['rows'] = []
@@ -629,8 +629,10 @@ class Action(threading.Thread):
         array_header_map = []
         try:
 
-            start_by = self.data_command['output'][0].get('start_by', None)
-            end_by = self.data_command['output'][0].get('end_by', None)
+            step = int(step) - 1
+
+            start_by = self.data_command['output'][step].get('start_by', None)
+            end_by = self.data_command['output'][step].get('end_by', None)
 
             if start_by is not None and end_by is not None:
                 result_fang = stringhelpers.string_between(result_fang, start_by, end_by)
@@ -638,11 +640,8 @@ class Action(threading.Thread):
                 return  None
 
             array_row_data = stringhelpers.text_to_arrayrow(result_fang)
-            string_contain_header = self.data_command['output'][0].get('header', None) # default item 0 in array
-            string_table_name = self.data_command['output'][0].get('db_table', None).lower() # table name
-
-            if string_table_name == 'interfaces':
-                a = 'longhk'
+            string_contain_header = self.data_command['output'][step].get('header', None) # default item 0 in array
+            string_table_name = self.data_command['output'][step].get('db_table', None).lower() # table name
 
 
             if string_contain_header is not None:
@@ -666,7 +665,9 @@ class Action(threading.Thread):
                             for config_output in self.data_command['output']:
                                 index_column = int(config_output.get('column', None))  # value index
                                 key = config_output['name'].lower()
+                                header = config_output['header'].lower()
                                 start, end  = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
+                                #start, end = dict_index_header.get(header.lower(), None)
                                 value = row[start:end].strip()
                                 data_build[key] = value
                                 data_version[key] = value
@@ -714,7 +715,7 @@ class Action(threading.Thread):
 
                         if(string_contain_header in row):
 
-                            matches = [(m.group(0), (m.start(), m.end() - 1)) for m in re.finditer(r'\S+', row)]
+                            '''matches = [(m.group(0), (m.start(), m.end() - 1)) for m in re.finditer(r'\S+', row)]
                             header, header_index = zip(*matches)
                             if len(header) >= 8:
                                 array_header = row.split('  ')
@@ -722,10 +723,45 @@ class Action(threading.Thread):
                                 array_header_map = array_header
                             else:
                                 array_header = header
-                                array_header_map = header
+                                array_header_map = header'''
+
+                            row = row.lower()
+                            for output in self.data_command['output']:
+                                header = output.get('header', None)
+                                if header is not None:
+                                    #array_header.append(header.lower())
+                                    row = row.replace(header.lower(), "{}{}".format("|", header.lower()))
+                            #else:
+                            #    array_header_map = array_header
+                            header = row.split('|')
+                            if len(header):
+                                sub_header = []
+                                for h_item in header:
+                                    if h_item is not '' and h_item is not None:
+                                        array_header.append(h_item.replace("|", ""))
+                                for h_item in array_header:
+                                    if h_item is not '' and h_item is not None:
+                                        try:
+                                            if h_item.rfind("  ") > 0:
+                                                sub_header.extend(h_item.split("  "))
+                                            else:
+                                                if h_item.rfind('?') > 0: # special character
+                                                    sub_header.extend(h_item.split(" "))
+                                                else:
+                                                    sub_header.append(h_item)
+                                        except:
+                                            #index out range
+                                            pass
+
+                                            #array_header.remove(h_item)
+                                array_header = sub_header
+                                array_header = [x for x in array_header if x is not None and x is not '' and x is not ' ']
+                                array_header_map = array_header
+                            else:
+                                pass
 
                             #-------------- process index get value colum --------------------------------------------------
-                            array_index_length = [row.index(x) for x in array_header]
+                            array_index_length = [row.replace('|', "").index(x) for x in array_header]
                             length_array_header = len(array_header) - 1
                             count = 0
                             for x in array_header:
@@ -817,7 +853,7 @@ class Action(threading.Thread):
             return output_result
         except Exception as _errorException:
             output_result[key]['parsing_status'] = 'ERROR'
-            _strError = "[DISCOVERY] MEGA ACTION PARSING %d ERROR %s | THREAD %s" % (_errorException, self.name)
+            _strError = "[DISCOVERY] MEGA ACTION PARSING %s ERROR %s | THREAD %s" % (_errorException, self.name)
             stringhelpers.err(_strError)
             return  output_result
 
