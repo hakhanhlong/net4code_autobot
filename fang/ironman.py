@@ -43,21 +43,23 @@ class IronManager(threading.Thread):
                 self.counter = self.counter + 1
                 # -------------- IRONMAN RUN SCHEDULE ----------------------------------------------------------------
                 # get current day name
-                weekday = datetime.now().strftime('%A')
-                _request.url = self.requestURL.IRONMAN_URL_GET_SCHEDULE % (weekday)
+                #weekday = datetime.now().strftime('%A')
+                #_request.url = self.requestURL.IRONMAN_URL_GET_SCHEDULE % (weekday)
+                _request.url = self.requestURL.IRONMAN_URL_GET_SCHEDULE
                 _list_schedules = _request.get().json()
                 if len(_list_schedules) > 0:
                     for x in _list_schedules:
-                        key_mop = 'main_schedule_%d' % (x['schedule_id'])
-                        schedule_id = x['schedule_id']
-                        template_id = x['templates']
-                        mechanism = x['mechanism']
-                        dict_schedule_queue[str(x['schedule_id'])] = x['time']
+                        key_mop = 'main_schedule_%d' % (x['mop_id'])
+                        schedule_id = x['mop_id']
+                        template_id = int(x['template_id'])
+                        mechanism = x['run_type']
+                        run_time = x['run_datetime'].split("-")[1].strip()
+                        dict_schedule_queue[str(x['mop_id'])] = run_time
 
                         if dict_schedule.get(key_mop, None) is not None:
                             pass
                         else:
-                            list_time.append(x['time'])
+                            list_time.append(run_time)
                             _request.url = self.requestURL.MEGA_URL_TEMPLATE_DETAIL % (str(template_id))
                             _template = _request.get().json()
                             dict_schedule[key_mop] = key_mop

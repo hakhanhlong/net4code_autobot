@@ -28,7 +28,8 @@ class Schedule(threading.Thread):
         try:
             #---------------------------- waiting time for time start ------------------------------------------------
             while self.is_waiting:
-                time_start = datetime.strptime(self.mop_data['time'], '%H:%M').time()
+                run_time = self.mop_data['run_datetime'].split("-")[1].strip()
+                time_start = datetime.strptime(run_time, '%H:%M').time()
                 time_current = datetime.strptime("%d:%d"%(datetime.now().hour, datetime.now().minute), "%H:%M").time()
 
                 if time_current >= time_start:
@@ -47,7 +48,7 @@ class Schedule(threading.Thread):
                 self.template_data['run_devices'] = run_devices
 
 
-                key_mop = 'main_schedule_%d' % (self.mop_data['schedule_id'])
+                key_mop = 'main_schedule_%d' % (self.mop_data['mop_id'])
 
                 irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
                                               self.template_data)
@@ -57,19 +58,19 @@ class Schedule(threading.Thread):
                 #irondiscovery.start()
                 #irondiscovery.join()
 
-                if self.mechanism == 'MANUAL':
+                if self.mechanism.upper() == 'MANUAL':
                     self.is_stop = True
                     del self.dict_schedule[key_mop]
                 else:
                     weekday = datetime.now().strftime('%A')
-                    if weekday not in list(self.mop_data['weekly']):
+                    if weekday not in list(self.mop_data['day_in_week']):
                         del self.dict_schedule[key_mop]
                         self.is_stop = True
                     else:
                         while True:
                             if irondiscovery.done == True:
-                                stringhelpers.info('[IRON][DISCOVERY][WAITING][%d s][%s]' % (int(self.mop_data['interval']), self.name))
-                                time.sleep(int(self.mop_data['interval']))
+                                stringhelpers.info('[IRON][DISCOVERY][WAITING][%d minutes][%s]' % (int(self.mop_data['return_after']), self.name))
+                                time.sleep(int(self.mop_data['return_after'])*60)
                                 break
 
         except Exception as error:
