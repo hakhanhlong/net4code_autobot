@@ -40,6 +40,8 @@ class RequestURL:
 
         self.IRONMAN_URL_GET_SCHEDULE = os.environ.get('IRONMAN_URL_GET_SCHEDULE')
 
+        self.IRONMAN_URL_MOP_UPDATE = os.environ.get('IRONMAN_URL_MOP_UPDATE')
+
 
 
 

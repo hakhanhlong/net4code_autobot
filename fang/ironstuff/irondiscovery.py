@@ -4,21 +4,22 @@ from api.request_helpers import RequestHelpers
 from api.request_url import RequestURL
 from network_adapter.factory_connector import FactoryConnector
 from . import func_compare
-import json
+
 
 from database.impl.interfaces_Impl import InterfaceImpl
 from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
-import re
+
 import datetime
+from time import time
 
 
 
 #@functools.total_ordering
 class IronDiscovery(threading.Thread):
     """ Thread instance each process template """
-    def __init__(self,  name, data_template = None, dict_template = {}):
+    def __init__(self,  name, data_template = None, dict_template = {}, mop_id = None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_template = data_template
@@ -30,8 +31,24 @@ class IronDiscovery(threading.Thread):
         self.result_templates = []
         self.done = False
 
+        self.mop_id = mop_id
+        self.start_time = time()
 
 
+    def update_mop_status(self, status, duration=None):
+        # ---------------update mega_status to action------------------------------------------------
+        self._request.url = self.requestURL.IRONMAN_URL_MOP_UPDATE % (self.mop_id)
+        dict_update = {'iron_status': status}
+        if status == 'running':
+            dict_update['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        if status == 'done' or status == 'rolledback':
+            #key_template = 'template_%d' % (self.mop_id)
+            #del self.dict_template[key_template]
+            dict_update['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            dict_update['duration_time'] = '%.2f' % (duration - self.start_time)
+
+        self._request.params = dict_update
+        self._request.put()
 
     def run(self):
         if self.info_fang is not None:
@@ -39,8 +56,10 @@ class IronDiscovery(threading.Thread):
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
                 subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']))
+                self.update_mop_status('running')
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
+                self.update_mop_status('done', time())
                 self.result_templates.append(dict_template)
             # ----------------------------------------------------------------------------------------------------------
             self.done = True

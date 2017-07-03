@@ -51,7 +51,7 @@ class Schedule(threading.Thread):
                 key_mop = 'main_schedule_%d' % (self.mop_data['mop_id'])
 
                 irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
-                                              self.template_data)
+                                              self.template_data, {} , self.mop_data['mop_id'])
                 #insert to queue discovery
                 self.queue.put(irondiscovery)
 
