@@ -761,8 +761,6 @@ class Action(threading.Thread):
                                     _strError = "[DISCOVERY][PARSING][HEADER][%s]: %s | THREAD %s" % (self.name, _outputHeaderError)
                                     stringhelpers.err(_strError)
 
-
-
                             is_next = True
                     row_count = row_count + 1
 
