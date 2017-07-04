@@ -757,7 +757,6 @@ class Action(threading.Thread):
                                     header = row[index_start:index_end].strip()
                                     dict_index_header[header] = (index_start, index_end)
                                     array_header.append(header)
-
                                 except Exception as _outputHeaderError:
                                     _strError = "[DISCOVERY][PARSING][HEADER][%s]: %s | THREAD %s" % (self.name, _outputHeaderError)
                                     stringhelpers.err(_strError)
