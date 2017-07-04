@@ -763,18 +763,7 @@ class Action(threading.Thread):
                                     stringhelpers.err(_strError)
 
 
-                            #-------------- process index get value colum --------------------------------------------------
-                            '''array_index_length = [row.index(x) for x in array_header]
 
-                            length_array_header = len(array_header) - 1
-                            count = 0
-                            for x in array_header:
-                                if count < length_array_header:
-                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
-                                else: #last column
-                                    dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count])*15)
-                                count = count + 1'''
-                            # ----------------------------------------------------------------------------------------------
                             is_next = True
                     row_count = row_count + 1
 
