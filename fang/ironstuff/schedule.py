@@ -6,6 +6,8 @@ from fang.ironstuff.irondiscovery import IronDiscovery
 import time
 from datetime import datetime
 
+from database.impl.table_impl import TABLEImpl
+
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
@@ -47,31 +49,43 @@ class Schedule(threading.Thread):
 
                 self.template_data['run_devices'] = run_devices
 
-
                 key_mop = 'main_schedule_%d' % (self.mop_data['mop_id'])
 
-                irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
-                                              self.template_data, {} , self.mop_data['mop_id'])
-                #insert to queue discovery
-                self.queue.put(irondiscovery)
 
-                #irondiscovery.start()
-                #irondiscovery.join()
+                try:
+                    table_id = int(self.mop_data['save_to_table'])
+                    tableImpl = TABLEImpl()
+                    table_name = tableImpl.get(table_id)['table_name']
 
-                if self.mechanism.upper() == 'MANUAL':
-                    self.is_stop = True
-                    del self.dict_schedule[key_mop]
-                else:
-                    weekday = datetime.now().strftime('%A')
-                    if weekday not in list(self.mop_data['day_in_week']):
-                        del self.dict_schedule[key_mop]
+                    irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
+                                                  self.template_data, {}, self.mop_data['mop_id'], table_name)
+                    # insert to queue discovery
+                    self.queue.put(irondiscovery)
+
+                    # irondiscovery.start()
+                    # irondiscovery.join()
+
+                    if self.mechanism.upper() == 'MANUAL':
                         self.is_stop = True
+                        del self.dict_schedule[key_mop]
                     else:
-                        while True:
-                            if irondiscovery.done == True:
-                                stringhelpers.info('[IRON][DISCOVERY][WAITING][%d minutes][%s]' % (int(self.mop_data['return_after']), self.name))
-                                time.sleep(int(self.mop_data['return_after'])*60)
-                                break
+                        weekday = datetime.now().strftime('%A')
+                        if weekday not in list(self.mop_data['day_in_week']):
+                            del self.dict_schedule[key_mop]
+                            self.is_stop = True
+                        else:
+                            while True:
+                                if irondiscovery.done == True:
+                                    stringhelpers.info('[IRON][DISCOVERY][WAITING][%d minutes][%s]' % (
+                                    int(self.mop_data['return_after']), self.name))
+                                    time.sleep(int(self.mop_data['return_after']) * 60)
+                                    break
+
+                except Exception as _exError:
+                    stringhelpers.err("[ERROR] %s" % (_exError))
+
+
+
 
         except Exception as error:
             stringhelpers.err("[ERROR] %s %s" % (self.name, error))

@@ -11,7 +11,7 @@ from database.impl.networkobject_impl import NetworkObjectImpl
 from database.impl.lldp_impl import LLDPImpl
 
 
-import datetime
+from datetime import datetime
 from time import time
 
 
@@ -19,7 +19,7 @@ from time import time
 #@functools.total_ordering
 class IronDiscovery(threading.Thread):
     """ Thread instance each process template """
-    def __init__(self,  name, data_template = None, dict_template = {}, mop_id = None):
+    def __init__(self,  name, data_template = None, dict_template = {}, mop_id = None, table_name=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_template = data_template
@@ -33,6 +33,7 @@ class IronDiscovery(threading.Thread):
 
         self.mop_id = mop_id
         self.start_time = time()
+        self.table_name = table_name
 
 
     def update_mop_status(self, status, duration=None):
@@ -55,7 +56,7 @@ class IronDiscovery(threading.Thread):
             #-----------------------------------------------------------------------------------------------------------
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
-                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']))
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']), self.table_name)
                 self.update_mop_status('running')
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
@@ -160,7 +161,7 @@ class IronDiscovery(threading.Thread):
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, table_name=None):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -172,6 +173,7 @@ class SubTemplate(threading.Thread):
         self.is_check_run_finished = False
         self.result_templates = result_templates
         self.mode = mode
+        self.table_name = table_name
 
 
     def excecute(self, data_fang):
@@ -245,7 +247,7 @@ class SubTemplate(threading.Thread):
                                 thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                        param_rollback_action, vendor_ios,
                                                        fac, self.is_rollback,
-                                                       log_output_file_name, deviceid=device['device_id'])
+                                                       log_output_file_name, deviceid=device['device_id'], table_name = self.table_name)
                                 thread_action.start()
                                 result = thread_action.join()
                                 result['action_id'] = action_id
@@ -263,7 +265,7 @@ class SubTemplate(threading.Thread):
                             thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                    param_rollback_action, vendor_ios,
                                                    fac, self.is_rollback, log_output_file_name,
-                                                   deviceid=device['device_id'])
+                                                   deviceid=device['device_id'], table_name =self.table_name)
                             thread_action.start()
                             result = thread_action.join()
                             result['action_id'] = action_id
@@ -417,7 +419,7 @@ class Action(threading.Thread):
     """ Thread instance each process mega """
     def __init__(self, name, data_action = None, action_id = None, params_action=None, param_rollback_action=None,
                  vendor_os=None, session_fang=None, is_rolback=False, file_log=None,
-                 deviceid=None):
+                 deviceid=None, table_name=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
@@ -443,6 +445,8 @@ class Action(threading.Thread):
             'interfaces': InterfaceImpl,
             'lldp': LLDPImpl
         }
+
+        self.table_name = table_name
 
 
 
@@ -660,7 +664,8 @@ class Action(threading.Thread):
 
             array_row_data = stringhelpers.text_to_arrayrow(result_fang)
             string_contain_header = self.data_command['output'][step].get('header', None) # default item 0 in array
-            string_table_name = self.data_command['output'][step].get('db_table', None).lower() # table name
+            #string_table_name = self.data_command['output'][step].get('db_table', None).lower() # table name
+            string_table_name = self.table_name
 
 
             if string_contain_header is not None:
@@ -685,9 +690,9 @@ class Action(threading.Thread):
                                 try:
                                     index_column = int(config_output.get('column', None))  # value index
                                     key = config_output['name'].lower()
-                                    header = config_output['header'].lower()
-                                    start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
-                                    # start, end = dict_index_header.get(header.lower(), None)
+                                    header = config_output['header']
+                                    #start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
+                                    start, end = dict_index_header.get(header, None)
                                     value = row[start:end].strip()
                                     data_build[key] = value
                                     data_version[key] = value
@@ -748,45 +753,32 @@ class Action(threading.Thread):
                                 array_header = header
                                 array_header_map = header'''
 
-                            row = row.lower()
-                            for output in self.data_command['output']:
-                                header = output.get('header', None)
-                                if header is not None:
-                                    #array_header.append(header.lower())
-                                    row = row.replace(header.lower(), "{}{}".format("|", header.lower()))
-                                    row = row.replace("?", "?|")
-
-                            #else:
-                            #    array_header_map = array_header
-                            header = row.split('|')
-                            if len(header):
-                                sub_header = []
-                                for h_item in header:
-                                    if h_item is not '' and h_item is not None:
-                                        _header_uppercase = h_item.replace("|", "")
-                                        array_header.append(_header_uppercase)
-
-                                for h_item in array_header:
-                                    if h_item is not '' and h_item is not None:
-                                        try:
-                                            if h_item.rfind("  ") > 0:
-                                                sub_header.extend(h_item.split("  "))
-                                            else:
-                                                sub_header.append(h_item)
-                                        except:
-                                            #index out range
-                                            pass
-                                            #array_header.remove(h_item)
+                            # build header and extract size header for value
+                            for config_output in self.data_command['output']:
+                                try:
+                                    #header_start #header_end
+                                    header_start = config_output['header_start']
+                                    header_end = config_output.get('header_end', None)
+                                    index_start = row.index(header_start)
+                                    if header_end is None:
+                                        index_end = len(row)
+                                    else:
+                                        index_end = row.index(header_end)
 
 
-                                #array_header = sub_header
-                                array_header = [x for x in array_header if x is not None and x is not '' and x is not ' ']
-                                array_header_map = array_header
-                            else:
-                                pass
+
+                                    header = row[index_start:index_end].strip()
+                                    dict_index_header[header] = (index_start, index_end)
+                                    array_header.append(header)
+
+                                except Exception as _outputHeaderError:
+                                    _strError = "[DISCOVERY][PARSING][HEADER][%s]: %s | THREAD %s" % (self.name, _outputHeaderError)
+                                    stringhelpers.err(_strError)
+
 
                             #-------------- process index get value colum --------------------------------------------------
-                            array_index_length = [row.replace('|', "").index(x) for x in array_header]
+                            '''array_index_length = [row.index(x) for x in array_header]
+
                             length_array_header = len(array_header) - 1
                             count = 0
                             for x in array_header:
@@ -794,68 +786,10 @@ class Action(threading.Thread):
                                     dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count + 1])
                                 else: #last column
                                     dict_index_header[str(x.lower())] = (array_index_length[count], array_index_length[count] + len(array_header[count])*15)
-                                count = count + 1
+                                count = count + 1'''
                             # ----------------------------------------------------------------------------------------------
                             is_next = True
                     row_count = row_count + 1
-                #else:
-                #    _strError = "[DISCOVERY] MEGA COMMAND: %s NOT SUIABLE | THREAD %s" % (commandtext, self.name)
-                #    stringhelpers.err(_strError)
-                '''elif commandtext == "show lldp neighbor":
-                    array_process = []
-                    array_header = []
-                    #arrayRow = list(filter(None, array_row_data))
-                    arrayRow = [x for x in array_row_data if x is not None]
-                    is_next = False
-                    lenght_array_row = len(arrayRow)
-                    for row in arrayRow:
-                        if '#' not in row and 'Total entries displayed:' not in row:
-                            if is_next:
-                                rows_dict = dict()
-                                array_value = row.split()
-                                if len(array_value) > 0:
-                                    for index, name in enumerate(array_header):
-                                        if name is not None or name is not '':
-                                            try:
-                                                rows_dict[name.replace(' ', '')] = array_value[index]
-                                            except:
-                                                rows_dict[name.replace(' ', '')] = ''
-
-                                    # ------------------- process insert/update/check database tablet interfaces ----------------
-                                    try:
-                                        if rows_dict['DeviceID'] is None or rows_dict['LocalIntf'] == '':
-                                            continue
-
-                                        interfaceimpl = InterfaceImpl()
-                                        intf = interfaceimpl.get_interface(self.deviceid, rows_dict['LocalIntf'])
-                                        if intf:  # exist interfaces then process lldp
-                                            interface_id = intf.interface_id
-                                            lldpImpl = LLDPImpl()
-                                            lldp = lldpImpl.get(interface_id)
-                                            lldp_dict = {
-                                                "interface_id":interface_id,
-                                                "remote_interface":rows_dict['PortID'],
-                                                "local_interface":rows_dict['LocalIntf'],
-                                                "remote_device": rows_dict['DeviceID'],
-                                                "local_deviceid": self.deviceid,
-                                                "data": rows_dict,
-                                                'local_device': arrayRow[lenght_array_row-1].replace('#','').replace('>','').replace('$','')
-                                            }
-                                            if lldp: #update lldp
-                                                lldpImpl.update(**lldp_dict)
-                                            else: #insert lldp
-                                                lldpImpl.save(**lldp_dict)
-                                    except Exception as ex:
-                                        _strError = "[DISCOVERY][INSERT][UPDATE][LLDP]: %s | THREAD %s" % (ex, self.name)
-                                        stringhelpers.err(_strError)
-                                    # --------------------------------------------------------------------------------------
-
-                                    output_result['rows'].append(rows_dict)
-
-                            if ('Device ID' in row) and ('Port ID' in row): # phan loai row header
-                                array_header = row.split('  ')
-                                array_header = list(filter(None, array_header))
-                                is_next = True'''
 
 
                 #-------------------------------process delete interfaces & lldp if device not exist interface and lldp-----
