@@ -700,7 +700,7 @@ class Action(threading.Thread):
                                     pass
 
 
-                            data_version['modifieddate'] = datetime.datetime.now()
+                            data_version['modifieddate'] = datetime.now()
 
                             #---------------------------------------------------------------------------------------
 
