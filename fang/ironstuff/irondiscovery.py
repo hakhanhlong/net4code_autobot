@@ -761,12 +761,9 @@ class Action(threading.Thread):
                                     header_end = config_output.get('header_end', None)
                                     index_start = row.index(header_start)
                                     if header_end is None:
-                                        index_end = len(row)
+                                        index_end = len(row) * 15
                                     else:
                                         index_end = row.index(header_end)
-
-
-
                                     header = row[index_start:index_end].strip()
                                     dict_index_header[header] = (index_start, index_end)
                                     array_header.append(header)
