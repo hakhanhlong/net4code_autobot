@@ -678,7 +678,7 @@ class Action(threading.Thread):
                 for row in arrayRow:
                     if row == '':
                         continue
-                    if '#' not in row and '---------' not in row:
+                    if '#' not in row and '---------' not in row and '@' not in row:
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
@@ -710,7 +710,6 @@ class Action(threading.Thread):
                                         rows_dict[name] = array_value[index]
                                     except:
                                         rows_dict[name] = ''
-
                                 data_build['device_id'] = self.deviceid
                                 data_build['data'] = rows_dict
                                 data_build['table'] = string_table_name
