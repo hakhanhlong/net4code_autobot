@@ -689,7 +689,7 @@ class Action(threading.Thread):
                             for config_output in self.data_command['output']:
                                 try:
                                     index_column = int(config_output.get('column', None))  # value index
-                                    key = config_output['name']
+                                    key = config_output['header_start']
                                     header = config_output['header']
                                     #start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
                                     start, end = dict_index_header.get(key, None)
