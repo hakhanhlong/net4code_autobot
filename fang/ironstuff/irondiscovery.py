@@ -692,7 +692,7 @@ class Action(threading.Thread):
                                     key = config_output['name'].lower()
                                     header = config_output['header']
                                     #start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
-                                    start, end = dict_index_header.get(header, None)
+                                    start, end = dict_index_header.get(key, None)
                                     value = row[start:end].strip()
                                     data_build[key] = value
                                     data_version[key] = value
