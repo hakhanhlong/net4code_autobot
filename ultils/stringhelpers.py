@@ -93,3 +93,22 @@ def find_between_r( s, first, last ):
         return s[start:end]
     except ValueError:
         return ""
+
+def remove_duplicates(values):
+    output = []
+    duplicate = []
+    seen = set()
+    remove_duplicate = None
+    for value in values:
+        # If value has not been encountered yet,
+        # ... add it to both list and set.
+        if value not in seen:
+            output.append(value)
+            seen.add(value)
+        else:
+            duplicate.append(value)
+    for dup in duplicate:
+        for out in output:
+            if dup == out:
+                output.remove(dup)
+    return output

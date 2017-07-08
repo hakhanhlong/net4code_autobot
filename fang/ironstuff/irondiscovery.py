@@ -663,6 +663,7 @@ class Action(threading.Thread):
                 return  None
 
             array_row_data = stringhelpers.text_to_arrayrow(result_fang)
+            array_row_data = stringhelpers.remove_duplicates(array_row_data)
             string_contain_header = self.data_command['output'][step].get('header', None) # default item 0 in array
             #string_table_name = self.data_command['output'][step].get('db_table', None).lower() # table name
             string_table_name = self.table_name
@@ -678,7 +679,7 @@ class Action(threading.Thread):
                 for row in arrayRow:
                     if row == '':
                         continue
-                    if '#' not in row and '---------' not in row and '@' not in row:
+                    if '#' not in row and '---------' not in row:
                         if is_next:
                             rows_dict = dict()
                             array_value = row.split()
@@ -690,11 +691,11 @@ class Action(threading.Thread):
                                 try:
                                     index_column = int(config_output.get('column', None))  # value index
                                     key = config_output['header_start']
-                                    header = config_output['header']
-                                    #start, end = dict_index_header.get(str(array_header_map[index_column]).lower(), None)
                                     start, end = dict_index_header.get(key, None)
                                     value = row[start:end].strip()
+
                                     data_build[key] = value
+
                                     data_version[key] = value
                                 except:
                                     pass

@@ -20,7 +20,7 @@ class JunosHandler(BaseHandler):
             r"^(?i)error:",
             r"^.*more"
         ])
-        self.blank_lines(2)
+        self.blank_lines(1)
         for command in command_list:
             self.session.send(command)
             index = self.session.expect_list([pexpect.TIMEOUT, prompt[2]], timeout=0.1)
@@ -55,7 +55,7 @@ class JunosHandler(BaseHandler):
                 pass
             else:
                 self.command_error_reporter(command)
-        self.blank_lines(2)
+        self.blank_lines(1)
         self.session.terminate(True)
 
     def execute_action_command(self, command_list, blanks=0, error_reporting=False, timeout=30, terminal=True):
