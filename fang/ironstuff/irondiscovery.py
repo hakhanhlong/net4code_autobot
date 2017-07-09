@@ -649,7 +649,7 @@ class Action(threading.Thread):
         array_network_id = []
         array_index_length = []
         dict_index_header = dict()
-        array_header_map = []
+        array_header_map  = {}
         try:
 
             step = int(step) - 1
@@ -690,13 +690,13 @@ class Action(threading.Thread):
                             for config_output in self.data_command['output']:
                                 try:
                                     index_column = int(config_output.get('column', None))  # value index
+
                                     key = config_output['header_start']
                                     start, end = dict_index_header.get(key, None)
                                     value = row[start:end].strip()
-
-                                    data_build[key] = value
-
-                                    data_version[key] = value
+                                    field = array_header_map.get(key, None)
+                                    data_build[field] = value
+                                    data_version[field] = value
                                 except:
                                     pass
 
@@ -750,11 +750,18 @@ class Action(threading.Thread):
                                     header_start = config_output['header_start']
                                     header_end = config_output.get('header_end', None)
                                     index_start = row.index(header_start)
+
+                                    name = config_output.get('name', None) #save field to db
+
                                     if header_end is None:
                                         index_end = len(row) * 15
                                     else:
                                         index_end = row.index(header_end)
+
                                     header = row[index_start:index_end].strip()
+
+                                    array_header_map[header] = name
+
                                     dict_index_header[header] = (index_start, index_end)
                                     array_header.append(header)
                                 except Exception as _outputHeaderError:
