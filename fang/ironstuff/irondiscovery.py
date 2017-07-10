@@ -687,6 +687,7 @@ class Action(threading.Thread):
                             data_version = {}
 
                             #-------- get value follow colums ------------------------------------------------------
+                            is_insert = False
                             for config_output in self.data_command['output']:
                                 try:
                                     index_column = int(config_output.get('column', None))  # value index
@@ -695,8 +696,13 @@ class Action(threading.Thread):
                                     start, end = dict_index_header.get(key, None)
                                     value = row[start:end].strip()
                                     field = array_header_map.get(key, None)
-                                    data_build[field] = value
-                                    data_version[field] = value
+
+
+                                    #array_check_whitespace = [v for v in value if v.isspace()]
+                                    if value is not '':
+                                        data_build[field] = value
+                                        data_version[field] = value
+                                        is_insert = True
                                 except:
                                     pass
 
@@ -705,7 +711,7 @@ class Action(threading.Thread):
 
                             #---------------------------------------------------------------------------------------
 
-                            if len(array_value) > 0:
+                            if is_insert == True:
                                 for index, name in enumerate(array_header):
                                     try:
                                         rows_dict[name] = array_value[index]
