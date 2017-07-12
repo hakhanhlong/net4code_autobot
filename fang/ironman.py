@@ -64,7 +64,7 @@ class IronManager(threading.Thread):
                             _template = _request.get().json()
                             dict_schedule[key_mop] = key_mop
                             schedule = Schedule("SCHEDULE-%d" % (schedule_id), x, _template,  dict_schedule, False,
-                                                mechanism, schedule_id, queue_discovery)
+                                                mechanism, schedule_id, queue_discovery, x['output_mapping'])
                             schedule.start()
                             time.sleep(2)
 

@@ -11,7 +11,8 @@ from database.impl.table_impl import TABLEImpl
 
 class Schedule(threading.Thread):
     ''' Schedule threading'''
-    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None, mechanism=None, schedule_id = 0, queue=None):
+    def __init__(self, name=None, mop_data=None, template_data=None, dict_schedule=None, is_stop=None,
+                 mechanism=None, schedule_id = 0, queue=None, output_mapping=None):
         threading.Thread.__init__(self)
         self.name = name
         self.mop_data = mop_data
@@ -24,6 +25,7 @@ class Schedule(threading.Thread):
         self.is_waiting = True
         self.schedule_id = schedule_id
         self.queue = queue
+        self.output_mapping = output_mapping
 
 
     def run(self):
@@ -58,7 +60,7 @@ class Schedule(threading.Thread):
                     table_name = tableImpl.get(table_id)['table_name']
 
                     irondiscovery = IronDiscovery("IRONMAN-Thread-Template-%s" % (self.template_data['template_id']),
-                                                  self.template_data, {}, self.mop_data['mop_id'], table_name)
+                                                  self.template_data, {}, self.mop_data['mop_id'], table_name, self.output_mapping)
                     # insert to queue discovery
                     self.queue.put(irondiscovery)
 

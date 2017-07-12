@@ -19,7 +19,7 @@ from time import time
 #@functools.total_ordering
 class IronDiscovery(threading.Thread):
     """ Thread instance each process template """
-    def __init__(self,  name, data_template = None, dict_template = {}, mop_id = None, table_name=None):
+    def __init__(self,  name, data_template = None, dict_template = {}, mop_id = None, table_name=None, output_mapping=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_template = data_template
@@ -34,6 +34,7 @@ class IronDiscovery(threading.Thread):
         self.mop_id = mop_id
         self.start_time = time()
         self.table_name = table_name
+        self.output_mapping = output_mapping
 
 
     def update_mop_status(self, status, duration=None):
@@ -54,14 +55,17 @@ class IronDiscovery(threading.Thread):
     def run(self):
         if self.info_fang is not None:
             #-----------------------------------------------------------------------------------------------------------
+            count = 0
             for fang in self.info_fang['subtemplates']: # fang sub template
                 sub_template_name = fang['sub_template_name']
-                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']), self.table_name)
+                out_mapping = self.output_mapping.get(str(count), None)
+                subtemplate_thread = SubTemplate(sub_template_name, fang, False, self.result_templates, int(fang['mode']), self.table_name, out_mapping)
                 self.update_mop_status('running')
                 subtemplate_thread.start()
                 dict_template = dict(sub_template_name = sub_template_name, state = subtemplate_thread.join(), fang=fang, mode=int(fang['mode']))
                 self.update_mop_status('done', time())
                 self.result_templates.append(dict_template)
+                count = count + 1
             # ----------------------------------------------------------------------------------------------------------
             self.done = True
 
@@ -161,7 +165,7 @@ class IronDiscovery(threading.Thread):
 
 class SubTemplate(threading.Thread):
     '''sub template'''
-    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, table_name=None):
+    def __init__(self, name, subtemplate=None, is_rollback=False, result_templates = None, mode = 0, table_name=None, output_mapping=None):
         threading.Thread.__init__(self)
         self.subtemplate = subtemplate
         self.name = name
@@ -174,6 +178,7 @@ class SubTemplate(threading.Thread):
         self.result_templates = result_templates
         self.mode = mode
         self.table_name = table_name
+        self.output_mapping = output_mapping
 
 
     def excecute(self, data_fang):
@@ -234,7 +239,23 @@ class SubTemplate(threading.Thread):
                 # print(_dict_list_actions[step])
                 _action = _dict_list_actions[str(step)]
                 action_id = _action.get('action_id', 0)
+
+
+
+
                 if action_id > 0:  # command_id > 0
+                    try:
+                        data_fields = self.output_mapping[str(action_id)][vendor_ios]
+                    except Exception as _error_data_fields:
+                        self.array_state_action = []
+                        fac.remove_file_log(log_output_file_name)
+                        fac.terminal()  # finished fang command
+
+                        stringhelpers.err('[ERROR][DO NOT VENDOR_IOS] %s DEVICE ID: %s ACTION ID: %s' % (
+                        vendor_ios, str(device['device_id']), str(action_id)))
+
+                        return None
+
                     self._request.url = self.requestURL.MEGA_URL_ACTION_DETAIL % (action_id)
                     try:
                         thread_action_name = "Thread-Action_%s-In-%s" % (action_id, self.name)
@@ -244,10 +265,12 @@ class SubTemplate(threading.Thread):
                             dependStep = dependency
                             if (int(_action['condition']) == int(previous_final_output[dependStep - 1])):
 
+
+
                                 thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                        param_rollback_action, vendor_ios,
                                                        fac, self.is_rollback,
-                                                       log_output_file_name, deviceid=device['device_id'], table_name = self.table_name)
+                                                       log_output_file_name, deviceid=device['device_id'], table_name = self.table_name, data_fields=data_fields)
                                 thread_action.start()
                                 result = thread_action.join()
                                 result['action_id'] = action_id
@@ -265,7 +288,7 @@ class SubTemplate(threading.Thread):
                             thread_action = Action(thread_action_name, action_data, action_id, param_action,
                                                    param_rollback_action, vendor_ios,
                                                    fac, self.is_rollback, log_output_file_name,
-                                                   deviceid=device['device_id'], table_name =self.table_name)
+                                                   deviceid=device['device_id'], table_name =self.table_name, data_fields = data_fields)
                             thread_action.start()
                             result = thread_action.join()
                             result['action_id'] = action_id
@@ -419,7 +442,7 @@ class Action(threading.Thread):
     """ Thread instance each process mega """
     def __init__(self, name, data_action = None, action_id = None, params_action=None, param_rollback_action=None,
                  vendor_os=None, session_fang=None, is_rolback=False, file_log=None,
-                 deviceid=None, table_name=None):
+                 deviceid=None, table_name=None, data_fields=None):
         threading.Thread.__init__(self)
         self.name = name
         self.data_action = data_action
@@ -447,6 +470,7 @@ class Action(threading.Thread):
         }
 
         self.table_name = table_name
+        self.data_fields = data_fields
 
 
 
@@ -652,6 +676,9 @@ class Action(threading.Thread):
         array_header_map  = {}
         try:
 
+            if self.data_fields is None:
+                return None
+
             step = int(step) - 1
 
             start_by = self.data_command['output'][step].get('start_by', None)
@@ -664,9 +691,12 @@ class Action(threading.Thread):
 
             array_row_data = stringhelpers.text_to_arrayrow(result_fang)
             array_row_data = stringhelpers.remove_duplicates(array_row_data)
-            string_contain_header = self.data_command['output'][step].get('header', None) # default item 0 in array
+            #string_contain_header = self.data_command['output'][step].get('header', None) # default item 0 in array
+            string_contain_header = self.data_command['output'][step].get('template_header', None)  # default item 0 in array
             #string_table_name = self.data_command['output'][step].get('db_table', None).lower() # table name
             string_table_name = self.table_name
+
+
 
 
             if string_contain_header is not None:
@@ -674,8 +704,14 @@ class Action(threading.Thread):
 
                 arrayRow = [x for x in array_row_data if x is not None]
 
+                list_header = []
+                list_header.append(string_contain_header)
+
+                arrayRow[:0] = list_header
+
                 is_next = False
                 row_count = 0
+
                 for row in arrayRow:
                     if row == '':
                         continue
@@ -688,14 +724,19 @@ class Action(threading.Thread):
 
                             #-------- get value follow colums ------------------------------------------------------
                             is_insert = False
+                            index_column = 0
                             for config_output in self.data_command['output']:
                                 try:
-                                    index_column = int(config_output.get('column', None))  # value index
+                                    #index_column = int(config_output.get('column', None))  # value index
 
                                     key = config_output['header_start']
                                     start, end = dict_index_header.get(key, None)
                                     value = row[start:end].strip()
-                                    field = array_header_map.get(key, None)
+
+
+                                    #field = array_header_map.get(key, None)
+                                    field = self.data_fields[str(command_id)][config_output['name']]
+
 
 
                                     #array_check_whitespace = [v for v in value if v.isspace()]
@@ -712,6 +753,7 @@ class Action(threading.Thread):
                             #---------------------------------------------------------------------------------------
 
                             if is_insert == True:
+                                index_column = index_column + 1
                                 for index, name in enumerate(array_header):
                                     try:
                                         rows_dict[name] = array_value[index]

@@ -132,7 +132,7 @@ class BaseHandler:
             result = result.replace("\r                                        \r", "")
 
         result = result.replace("--More", "")
-        result = result.replace("--", "")
+        #result = result.replace("--", "")
         result = result.replace("[K", "")
         result = result.replace("[K", "")
         result = result.replace("[K --More", "")
@@ -164,7 +164,7 @@ class BaseHandler:
                 result = result.replace("\r                                        \r", "")
 
             result = result.replace("--More", "")
-            result = result.replace("--", "")
+            #result = result.replace("--", "")
             result = result.replace("[K", "")
             result = result.replace("[K", "")
             result = result.replace("[K --More", "")
