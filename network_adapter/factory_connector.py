@@ -15,6 +15,7 @@ class FactoryConnector:
         self.port = port,
         self.timeout = timeout
         self.file_log_command = "%s.log" % (stringhelpers.generate_random_keystring(10))
+        self.device_id = None
 
     def execute(self, commands=[]):
 
