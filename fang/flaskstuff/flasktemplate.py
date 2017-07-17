@@ -40,7 +40,7 @@ class FlaskTemplate(threading.Thread):
             dict_update['duration_time'] = '%.2f' % (duration - self.start_time)
 
         self._request.params = dict_update
-        #self._request.put()
+        self._request.put()
 
     def run(self):
         if self.info_fang is not None:
@@ -150,18 +150,18 @@ class FlaskTemplate(threading.Thread):
                                 # process argument for action ---------------------------------------------------------------
                                 dict_argument = self.data_template['run_args'].get(sub_template_number,None)  # level get by number template
                                 if dict_argument is not None:
-                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
-                                    if dict_argument is not None:
+                                    dict_argument_level_device = dict_argument.get(device_id, None)  # level get by deviceid
+                                    if dict_argument_level_device is not None:
                                         #dict_action['args'].append(dict_argument)
-                                        dict_action['args'] = dict_argument
+                                        dict_action['args'] = dict_argument_level_device
                                 # -------------------------------------------------------------------------------------------
                                 # process rollback argument for action ---------------------------------------------------------------
-                                dict_argument = self.data_template['rollback_args'].get(sub_template_number, None)  # level get by number template
-                                if dict_argument is not None:
-                                    dict_argument = dict_argument.get(device_id, None)  # level get by deviceid
-                                    if dict_argument is not None:
+                                dict_argument_rollback = self.data_template['rollback_args'].get(sub_template_number, None)  # level get by number template
+                                if dict_argument_rollback is not None:
+                                    dict_argument_rollback_level_device = dict_argument_rollback.get(device_id, None)  # level get by deviceid
+                                    if dict_argument_rollback_level_device is not None:
                                         #dict_action['rollback_args'].append(dict_argument)  # cho nay can phai la list argument
-                                        dict_action['rollback_args'] = dict_argument
+                                        dict_action['rollback_args'] = dict_argument_rollback_level_device
                             except:
                                 pass
 
@@ -692,7 +692,7 @@ class Action(threading.Thread):
 
 
 
-        # sao the nay fuck
+        # sao the nay fuck fuck fuck
     def run(self):
         try:
             key_list_command = self.vendor_os
@@ -850,15 +850,19 @@ class Action(threading.Thread):
                         if dependency > 0:  # run need compare
                             dependStep = dependency
                             if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
-                                output_info = self.process_each_command(command_id, _dict_list_params_rollback)
-                                if output_info is not None:
-                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
-
-                                    self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-
-                                    stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                command_type = _command_running.get('type', None)
+                                if command_type is not None:
+                                    if command_type == '5':
+                                        output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                        previous_final_output.append(True)
                                 else:
-                                    previous_final_output.append(False)
+                                    output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                        self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
+                                        stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                    else:
+                                        previous_final_output.append(False)
 
                             else:
                                 stringhelpers.err(
@@ -959,10 +963,7 @@ class Action(threading.Thread):
             ################### process args for command ##############################################
             #self.thread_lock.acquire()
 
-            if command_id == 3020:
-                tesst = 'onghk'
-
-            if len(_command_list_params.keys()) > 0:
+            if _command_list_params is not None:
                 _command_list_params = _command_list_params.get(str(command_id), None)
                 if _command_list_params is not None:
                     for k, v in _command_list_params.items():
@@ -971,7 +972,8 @@ class Action(threading.Thread):
                             command = command.replace('@{%s}' % (k), v)
                         else:
                             command = command.replace('@{%s}' % (k), v)
-
+                else:
+                    command = self.data_command['command']
             else:
                 command = self.data_command['command']
             #self.thread_lock.release()
