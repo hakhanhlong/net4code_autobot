@@ -12,7 +12,7 @@ from database.impl.lldp_impl import LLDPImpl
 
 
 from datetime import datetime
-from time import time
+from time import time, sleep
 
 
 
@@ -271,6 +271,7 @@ class SubTemplate(threading.Thread):
                                                        param_rollback_action, vendor_ios,
                                                        fac, self.is_rollback,
                                                        log_output_file_name, deviceid=device['device_id'], table_name = self.table_name, data_fields=data_fields)
+
                                 thread_action.start()
                                 result = thread_action.join()
                                 result['action_id'] = action_id
@@ -531,42 +532,60 @@ class Action(threading.Thread):
                         if dependency > 0:  # run need compare
                             dependStep = dependency
                             if (int(_command_running['condition']) == int(previous_final_output[dependStep - 1])):
-
-                                output_info = self.process_each_command(command_id, _dict_list_params, step)
-                                if output_info is not None:
-                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
-                                    self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                    stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-                                else:
-                                    #previous_final_output.append(False)
-                                    previous_final_output.append(True)
+                                command_type = _command_running.get('type', None)
+                                if command_type is not None:
+                                    if command_type == '5':  # process delay command
+                                        output_info = self.process_each_command(command_id, _dict_list_params, step)
+                                        previous_final_output.append(True)
+                                    else:
+                                        output_info = self.process_each_command(command_id, _dict_list_params, step)
+                                        if output_info is not None:
+                                            previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                            self.action_log['result']['outputs'][key_list_command]['config'].append(
+                                                output_info)
+                                            stringhelpers.info(
+                                                "\nAction: [%s]-- config step [%s]: filnal-output: %s" % (
+                                                self.action_id, step,
+                                                str(output_info[str(command_id)]['final_output'])))
+                                        else:
+                                            # previous_final_output.append(False)
+                                            previous_final_output.append(True)
                             else:
                                 stringhelpers.err(
                                     "MEGA ACTIONS STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
-                            output_info = self.process_each_command(command_id, _dict_list_params, step)
-                            if output_info is not None:
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
-                                self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
+                            command_type = _command_running.get('type', None)
+                            if command_type is not None:
+                                if command_type == '5':  # process delay command
+                                    output_info = self.process_each_command(command_id, _dict_list_params, step)
+                                    previous_final_output.append(True)
+                                else:
+                                    output_info = self.process_each_command(command_id, _dict_list_params, step)
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                        self.action_log['result']['outputs'][key_list_command]['config'].append(
+                                            output_info)
+                                        stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (
+                                        self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                        if int(step) > 1:
+                                            if int(output_info[str(command_id)]['final_output']) == int(
+                                                    _command_running.get('condition', 0)):
+                                                compare_final_output.append(True)
+                                            else:
+                                                # self.action_log['final_output'] = False
+                                                self.action_log['final_output'] = True
+                                                compare_final_output = []
+                                                break
                                     else:
-                                        #self.action_log['final_output'] = False
-                                        self.action_log['final_output'] = True
-                                        compare_final_output = []
-                                        break
-                            else:
-                                #previous_final_output.append(False)
-                                previous_final_output.append(True)
-                                if int(step) > 1:
-                                    #self.action_log['final_output'] = False
-                                    self.action_log['final_output'] = True
-                                    compare_final_output=[]
-                                    break
+                                        # previous_final_output.append(False)
+                                        previous_final_output.append(True)
+                                        if int(step) > 1:
+                                            # self.action_log['final_output'] = False
+                                            self.action_log['final_output'] = True
+                                            compare_final_output = []
+                                            break
                     else:  # last command in actions check point
                         try:
                             dependency = int(_command_running['dependency'])
@@ -627,6 +646,18 @@ class Action(threading.Thread):
             self.data_command = self._request.get().json()
             command = None
 
+
+            #-------------------- process delay command ---------------------------------------------------
+            try:
+                if int(self.data_command['type']) == 5:
+                    sleep(int(self.data_command['delay']))
+                    stringhelpers.info("[DELAY COMMAND %s %s]" % (command_id, self.data_command['delay']))
+                    return None
+            except Exception as ex_error:
+                errror = ex_error
+            #----------------------------------------------------------------------------------------------
+
+
             ################### process args for command ##############################################
             #self.thread_lock.acquire()
             if len(_dict_list_params) > 0:
@@ -642,19 +673,23 @@ class Action(threading.Thread):
                 command = self.data_command['command']
             #self.thread_lock.release()
             ###########################################################################################
-            commands = [command]
-            #stringhelpers.info_green(command)
 
-            self.fang.execute_template_action_command(commands, blanks=2, error_reporting=True, timeout=-1, terminal=False)
-            #result_fang = self.fang.get_output()
-            result_fang = self.fang.get_action_output(self.log_output_file_name)
+            if command is not None:
+                commands = [command]
+                #stringhelpers.info_green(command)
+
+                self.fang.execute_template_action_command(commands, blanks=2, error_reporting=True, timeout=-1, terminal=False)
+                #result_fang = self.fang.get_output()
+                result_fang = self.fang.get_action_output(self.log_output_file_name)
 
 
-            # processing parsing command follow output ###########################################
-            action_command_log = self.parsing(command_id ,result_fang, commands[0], step)
-            action_command_log = None
-            return action_command_log
-            ######################################################################################
+                # processing parsing command follow output ###########################################
+                action_command_log = self.parsing(command_id ,result_fang, commands[0], step)
+                action_command_log = None
+                return action_command_log
+                ######################################################################################
+            else:
+                return None
         except Exception as e:
             stringhelpers.err("[DISCOVERY] MEGA ACTION PROCESS EACH COMMAND ERROR %s | THREAD %s" % (e, self.name))
             return None
@@ -676,10 +711,14 @@ class Action(threading.Thread):
         array_header_map  = {}
         try:
 
+
+            if command_id == 11019 or command_id == 11020 or command_id == 11025:
+                longhk = "test"
+
             if self.data_fields is None:
                 return None
 
-            step = int(step) - 1
+            step = 0#int(step) - 1
 
             start_by = self.data_command['output'][step].get('start_by', None)
             end_by = self.data_command['output'][step].get('end_by', None)

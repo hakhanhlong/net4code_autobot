@@ -757,6 +757,18 @@ class Action(threading.Thread):
                                     if command_type == '5': #process delay command
                                         output_info = self.process_each_command(command_id, _dict_list_params)
                                         previous_final_output.append(True)
+                                    else:
+                                        output_info = self.process_each_command(command_id, _dict_list_params)
+                                        if output_info is not None:
+                                            previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                            self.action_log['result']['outputs'][key_list_command]['config'].append(
+                                                output_info)
+                                            stringhelpers.info(
+                                                "\nAction: [%s]-- config step [%s]: filnal-output: %s" % (
+                                                self.action_id, step,
+                                                str(output_info[str(command_id)]['final_output'])))
+                                        else:
+                                            previous_final_output.append(False)
                                 else:
                                     output_info = self.process_each_command(command_id, _dict_list_params)
                                     if output_info is not None:
@@ -771,24 +783,52 @@ class Action(threading.Thread):
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
-                            output_info = self.process_each_command(command_id, _dict_list_params)
-                            if output_info is not None:
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
-                                self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
-                                stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
+                            command_type = _command_running.get('type', None)
+                            if command_type is not None:
+                                if command_type == '5':  # process delay command
+                                    output_info = self.process_each_command(command_id, _dict_list_params)
+                                    previous_final_output.append(True)
+                                else:
+                                    output_info = self.process_each_command(command_id, _dict_list_params)
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                        self.action_log['result']['outputs'][key_list_command]['config'].append(
+                                            output_info)
+                                        stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (
+                                        self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                        if int(step) > 1:
+                                            if int(output_info[str(command_id)]['final_output']) == int(
+                                                    _command_running.get('condition', 0)):
+                                                compare_final_output.append(True)
+                                            else:
+                                                self.action_log['final_output'] = False
+                                                compare_final_output = []
+                                                break
                                     else:
-                                        self.action_log['final_output'] = False
-                                        compare_final_output = []
-                                        break
+                                        previous_final_output.append(False)
+                                        if int(step) > 1:
+                                            self.action_log['final_output'] = False
+                                            compare_final_output = []
+                                            break
                             else:
-                                previous_final_output.append(False)
-                                if int(step) > 1:
-                                    self.action_log['final_output'] = False
-                                    compare_final_output=[]
-                                    break
+                                output_info = self.process_each_command(command_id, _dict_list_params)
+                                if output_info is not None:
+                                    previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                    self.action_log['result']['outputs'][key_list_command]['config'].append(output_info)
+                                    stringhelpers.info("\nAction: [%s]-- config step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                    if int(step) > 1:
+                                        if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
+                                            compare_final_output.append(True)
+                                        else:
+                                            self.action_log['final_output'] = False
+                                            compare_final_output = []
+                                            break
+                                else:
+                                    previous_final_output.append(False)
+                                    if int(step) > 1:
+                                        self.action_log['final_output'] = False
+                                        compare_final_output=[]
+                                        break
                     else:  # last command in actions check point
                         try:
                             dependency = int(_command_running['dependency'])
@@ -855,42 +895,53 @@ class Action(threading.Thread):
                                     if command_type == '5':
                                         output_info = self.process_each_command(command_id, _dict_list_params_rollback)
                                         previous_final_output.append(True)
-                                else:
-                                    output_info = self.process_each_command(command_id, _dict_list_params_rollback)
-                                    if output_info is not None:
-                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
-                                        self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
-                                        stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
                                     else:
-                                        previous_final_output.append(False)
-
+                                        output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                        if output_info is not None:
+                                            previous_final_output.append(output_info[str(command_id)]['final_output'])
+                                            self.action_log['result']['outputs'][key_list_command]['rollback'].append(
+                                                output_info)
+                                            stringhelpers.info(
+                                                "\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (
+                                                self.action_id, step,
+                                                str(output_info[str(command_id)]['final_output'])))
+                                        else:
+                                            previous_final_output.append(False)
                             else:
                                 stringhelpers.err(
                                     "MEGA ACTIONS ROLLBACK STEP: %s NOT AVAIABLE WITH FINAL_OUTPUT OF STEP %d| THREAD %s" % (step, dependStep, self.name))
                                 previous_final_output.append(False)
                                 continue
                         else:  # dependency == 0
-                            output_info = self.process_each_command(command_id, _dict_list_params_rollback)
-                            if output_info is not None:
-                                previous_final_output.append(output_info[str(command_id)]['final_output'])
+                            command_type = _command_running.get('type', None)
+                            if command_type is not None:
+                                if command_type == '5':
+                                    output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                    previous_final_output.append(True)
+                                else:
+                                    output_info = self.process_each_command(command_id, _dict_list_params_rollback)
+                                    if output_info is not None:
+                                        previous_final_output.append(output_info[str(command_id)]['final_output'])
 
-                                self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
+                                        self.action_log['result']['outputs'][key_list_command]['rollback'].append(output_info)
 
-                                stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (self.action_id, step, str(output_info[str(command_id)]['final_output'])))
+                                        stringhelpers.info("\nAction: [%s]-- rollback step [%s]: filnal-output: %s" % (
+                                        self.action_id, step, str(output_info[str(command_id)]['final_output'])))
 
-                                if int(step) > 1:
-                                    if int(output_info[str(command_id)]['final_output']) == int(_command_running.get('condition', 0)):
-                                        compare_final_output.append(True)
+                                        if int(step) > 1:
+                                            if int(output_info[str(command_id)]['final_output']) == int(
+                                                    _command_running.get('condition', 0)):
+                                                compare_final_output.append(True)
+                                            else:
+                                                self.action_log['final_output'] = False
+                                                compare_final_output = []
+                                                break
                                     else:
-                                        self.action_log['final_output'] = False
-                                        compare_final_output = []
-                                        break
-                            else:
-                                previous_final_output.append(False)
-                                if int(step) > 1:
-                                    self.action_log['final_output'] = False
-                                    compare_final_output = []
-                                    break
+                                        previous_final_output.append(False)
+                                        if int(step) > 1:
+                                            self.action_log['final_output'] = False
+                                            compare_final_output = []
+                                            break
                     else:  # last command in actions check point
                         try:
                             dependency = int(_command_running['dependency'])
